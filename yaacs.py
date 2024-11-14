@@ -74,7 +74,7 @@ def get_metadata(music_file: pathlib.Path) -> dict[str, Any]:
     ).stdout.decode("utf-8")
     metadata = json.loads(json_string)
     if music_file.suffix == ".opus":
-        for k, v in metadata["stream"]["tags"]:
+        for k, v in metadata["streams"][0]["tags"]:
             metadata["format"]["tags"][k] = v
     return metadata
 
