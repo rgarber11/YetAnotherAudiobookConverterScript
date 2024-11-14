@@ -505,7 +505,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         if len(media_locations) > 1:
             if cuesheet:
                 print("Error! Cannot have a singular cuesheet with multiple files")
-                sys.exit(1)
+                return ",".join(media_location.name for media_location in args.media_locations), False 
             success = merge_together(
                 file_metadata,
                 metadata_file,
@@ -521,7 +521,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                 input_file = add_cue(input_file, cuesheet, temp_dir_path)
                 if not input_file:
                     print("Could not attach chapters")
-                    sys.exit(1)
+                    return ",".join(media_location.name for media_location in args.media_locations), False 
             elif not auto_chapters or file_metadata[0]["chapters"]:
                 success = final_conversion(
                     input_file,
@@ -544,7 +544,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                     input_file = add_cue(input_file, temp_cue_file, temp_dir_path)
                     if not input_file:
                         print("Could not add chapters to input.")
-                        sys.exit(1)
+                        return ",".join(media_location.name for media_location in args.media_locations), False 
                 if not cue_sheet_text:
                     print("Warning: No Chapters Found")
                 success = final_conversion(
@@ -710,15 +710,15 @@ def main():
         + command_parser_help_text
         + "\n"
     )
-    global_args, unknown = parser.parse_known_args()
+    global_args, command_args = parser.parse_known_args()
     chunks = []
     start = 0
-    for i, curr in enumerate(unknown):
+    for i, curr in enumerate(command_args):
         if i != 0:
             if curr == "-i" or curr == "--input" or curr == "-a" or curr == "--auto":
-                chunks.append(command_parser.parse_args(unknown[start:i]))
+                chunks.append(command_parser.parse_args(command_args[start:i]))
                 start = i
-    chunks.append(command_parser.parse_args(unknown[start:]))
+    chunks.append(command_parser.parse_args(command_args[start:]))
     if not chunks:
         print("Error: No inputs specified")
         sys.exit(1)
