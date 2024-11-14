@@ -31,7 +31,7 @@ class DiscoveredMetadata:
     date: str
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True)
 class DispatchArgs:
     media_locations: list[pathlib.Path]
     metadata_file: pathlib.Path | None
