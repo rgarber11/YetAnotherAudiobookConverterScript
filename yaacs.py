@@ -12,7 +12,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 
 @dataclasses.dataclass
@@ -42,8 +42,8 @@ class DispatchArgs:
     bitrate: str | None
     delete_originals: bool
 
-
-class CustomPrintingArgParse(argparse.ArgumentParser):
+# The command parser is recursive. This makes that possible
+class CustomPrintingArgParse(argparse.ArgumentParser):  
     def print_help(self, file=None):
         if not file:
             file = sys.stdout
@@ -73,7 +73,7 @@ def get_metadata(music_file: pathlib.Path) -> dict[str, Any]:
         capture_output=True,
     ).stdout.decode("utf-8")
     metadata = json.loads(json_string)
-    if music_file.suffix == ".opus":
+    if music_file.suffix == ".opus":  # FFMpeg maps opus tags wrong (11/13/24)
         for k, v in metadata["streams"][0]["tags"]:
             metadata["format"]["tags"][k] = v
     return metadata
@@ -89,9 +89,12 @@ def add_cue(
     )
     if temporary.returncode != 0:
         return None
+    # FFMpeg does not read chapters correctly when reencoding to opus from mka
     final = subprocess.run(
         [
             "ffmpeg",
+            "-v", 
+            "quiet",
             "-i",
             str(temp_file),
             "-i",
@@ -113,7 +116,7 @@ def add_cue(
     return actual_file
 
 
-def get_performer(metadata: Any) -> str:
+def get_performer(metadata: Any) -> str: # Most formats don't have a performer tag
     if "performer" in metadata["format"]["tags"]:
         return metadata["format"]["tags"]["performer"]
     if "narratedby" in metadata["format"]["tags"]:
@@ -133,7 +136,7 @@ def final_conversion(
     bitrate: str,
     performer: str,
 ) -> bool:
-    args = ["ffmpeg", "-v", "quiet", "-stats", "-i", str(init_file)]
+    args = ["ffmpeg", "-v", "quiet", "-i", str(init_file)]
     if metadata_file:
         args.extend(
             ["-f", "ffmetadata", "-i", str(metadata_file), "-map_metadata", "1"]
@@ -167,7 +170,7 @@ def final_conversion(
     conversion = subprocess.run(args)
     return conversion.returncode == 0
 
-
+# FFMPEG cannot map covers to opus (11/13/24)
 def attach_image(output_file: pathlib.Path, cover_image: pathlib.Path) -> bool:
     attachment = subprocess.run(
         ["opustags", str(output_file), "-i", "--set_cover", str(cover_image)]
@@ -180,7 +183,7 @@ def extract_embedded_image(
 ) -> pathlib.Path | None:
     outfile = temp_dir.joinpath(f"{media_file.stem}.{codec}")
     extraction = subprocess.run(
-        ["ffmpeg", "-i", str(media_file), "-map", "0:v:0", "-vcodec", "copy", "outfile"]
+        ["ffmpeg", "-v", "quiet", "-i", str(media_file), "-map", "0:v:0", "-vcodec", "copy", "outfile"]
     )
     if extraction.returncode != 0:
         return None
@@ -284,7 +287,7 @@ def merge_together(
         if auto_chapters
         else None
     )
-    args = ["ffmpeg", "-v", "quiet", "-stats"]
+    args = ["ffmpeg", "-v", "quiet"]
     if all_same_suffix:
         concat_filename = temp_dir.joinpath(
             f"{file_metadata[0]["format"]["filename"].stem}.files"
@@ -322,8 +325,9 @@ def merge_together(
             )
         else:
             args.extend(["-map_metadata", "1", "-map_chapters", "1"])
+        # If auto, preserve bitrate
         if auto_bitrate and first_suffix == ".opus":
-            args.extend(["-c:a", "copy", str(output_file)])
+            args.extend(["-c:a", "copy", str(output_file)])  
         else:
             args.extend(
                 [
@@ -346,6 +350,7 @@ def merge_together(
         args.extend(["-f", "ffmetadata", "-i", str(metadata_file)])
         if auto_chapters:
             args.extend(["-f", "ffmetadata", "-i", str(chapter_file)])
+        # If there are heterogeneous inputs, a filter is the only way to concatenate
         args.extend(
             [
                 "-filter_complex",
@@ -378,6 +383,7 @@ def merge_together(
     return merger.returncode == 0
 
 
+# Auto-detection recursion
 def get_folders_of_files(media_location: pathlib.Path) -> list[pathlib.Path]:
     if all(not loc.is_dir() for loc in media_location.iterdir()):
         if not list(loc.suffix[1:] in audio_files for loc in media_location.iterdir()):
@@ -408,7 +414,7 @@ def resolve_automatic_conversion(
     ]
 
 
-def folders_to_files(media_locations: list[pathlib.Path]) -> list[pathlib.Path]:
+def flatten_manual_query(media_locations: list[pathlib.Path]) -> list[pathlib.Path]:
     delete_idxs = [1]
     while len(delete_idxs) > 0:
         delete_idxs = []
@@ -473,7 +479,7 @@ def prepare_file_metadata(media_locations: list[pathlib.Path]) -> list[Any]:
 
 
 def dispatch_conversion(args: DispatchArgs):
-    media_locations = folders_to_files(args.media_locations)
+    media_locations = flatten_manual_query(args.media_locations)
     metadata_file = args.metadata_file
     cuesheet = args.cuesheet
     cover_image = args.cover_image
@@ -558,7 +564,7 @@ def dispatch_conversion(args: DispatchArgs):
 
 
 def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
-    ans = []
+    ans: list[DispatchArgs] = []
     for namespace in inputs:
         if namespace.bitrate:
             if not re.match(r"\d+[kKmM]?", namespace.bitrate):
