@@ -12,9 +12,9 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "0.1.1"
-audio_files = ["mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff"]
-image_files = ["jpg", "png", "tiff", "jpeg"]
+VERSION = "0.2.0"
+audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
+image_files = ("jpg", "png", "tiff", "jpeg")
 
 
 @dataclasses.dataclass
@@ -187,6 +187,7 @@ def extract_embedded_image(
             "ffmpeg",
             "-v",
             "quiet",
+            "-y",
             "-i",
             str(media_file),
             "-map",
@@ -298,7 +299,7 @@ def merge_together(
         if auto_chapters
         else None
     )
-    args = ["ffmpeg", "-v", "quiet"]
+    args = ["ffmpeg", "-v", "quiet", "-y"]
     if all_same_suffix:
         concat_filename = temp_dir.joinpath(
             f"{file_metadata[0]["format"]["filename"].stem}.files"
@@ -410,19 +411,26 @@ def get_folders_of_files(media_location: pathlib.Path) -> list[pathlib.Path]:
 def resolve_automatic_conversion(
     media_location: pathlib.Path, bitrate: str | None, delete_originals: bool
 ) -> list[DispatchArgs]:
-    return [
-        DispatchArgs(
-            [folder],
-            None,
-            None,
-            None,
-            True,
-            folder.joinpath(f"{folder.stem}.opus"),
-            bitrate,
-            delete_originals,
+    ans = []
+    for folder in get_folders_of_files(media_location):
+        output_file = folder.joinpath(f"{folder.stem}.opus").expanduser().resolve()
+        if output_file.exists():
+            x = input("File {output_file} exists: Overwrite? (y/N): ")
+            if x not in {"y", "Y"}:
+                sys.exit(1)
+        ans.append(
+            DispatchArgs(
+                [folder],
+                None,
+                None,
+                None,
+                True,
+                output_file,
+                bitrate,
+                delete_originals,
+            )
         )
-        for folder in get_folders_of_files(media_location)
-    ]
+    return ans
 
 
 def flatten_manual_query(media_locations: list[pathlib.Path]) -> list[pathlib.Path]:
@@ -606,10 +614,22 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
                 sys.exit(1)
         if namespace.input:
             if namespace.output:
-                output_file = pathlib.Path(namespace.output)
+                output_file = pathlib.Path(namespace.output).expanduser().resolve()
+                if output_file.exists():
+                    x = input("File {output_file} exists: Overwrite? (y/N): ")
+                    if x not in {"y", "Y"}:
+                        sys.exit(1)
             else:
                 first_input = pathlib.Path(namespace.input[0])
-                output_file = first_input.parent.joinpath(f"{first_input.stem}.opus")
+                output_file = (
+                    first_input.parent.joinpath(f"{first_input.stem}.opus")
+                    .expanduser()
+                    .resolve()
+                )
+                if output_file.exists():
+                    x = input("File {output_file} exists: Overwrite? (y/N): ")
+                    if x not in {"y", "Y"}:
+                        sys.exit(1)
             metadata = None
             auto_chapters = True
             if namespace.metadata:
@@ -648,10 +668,10 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
             ):
                 print("Error: Cannot set covers/metadata in auto mode")
                 sys.exit(1)
-            for input in namespace.auto:
+            for inner in namespace.auto:
                 ans.extend(
                     resolve_automatic_conversion(
-                        pathlib.Path(input).expanduser().resolve(),
+                        pathlib.Path(inner).expanduser().resolve(),
                         namespace.bitrate,
                         namespace.delete,
                     )
@@ -742,13 +762,12 @@ def main():
         + "\n"
     )
     global_args, command_args = parser.parse_known_args()
-    chunks = []
+    chunks: list[argparse.Namespace] = []
     start = 0
     for i, curr in enumerate(command_args):
-        if i != 0:
-            if curr == "-i" or curr == "--input" or curr == "-a" or curr == "--auto":
-                chunks.append(command_parser.parse_args(command_args[start:i]))
-                start = i
+        if i != 0 and curr in {"-i", "--input", "-a", "--auto"}:
+            chunks.append(command_parser.parse_args(command_args[start:i]))
+            start = i
     chunks.append(command_parser.parse_args(command_args[start:]))
     if not chunks:
         print("Error: No inputs specified")
