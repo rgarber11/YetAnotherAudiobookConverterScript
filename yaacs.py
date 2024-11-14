@@ -478,7 +478,7 @@ def prepare_file_metadata(media_locations: list[pathlib.Path]) -> list[Any]:
     return file_metadata
 
 
-def dispatch_conversion(args: DispatchArgs):
+def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     media_locations = flatten_manual_query(args.media_locations)
     metadata_file = args.metadata_file
     cuesheet = args.cuesheet
@@ -561,6 +561,9 @@ def dispatch_conversion(args: DispatchArgs):
     if success and delete_originals:
         for loc in media_locations:
             loc.unlink()
+    if not success:
+        return ",".join(media_location.name for media_location in args.media_locations), False 
+    return output_file.name, True
 
 
 def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
@@ -722,9 +725,13 @@ def main():
     args = validate_inputs(chunks)
     processes = global_args.threads if global_args.threads != 0 else None
     with multiprocessing.Pool(processes=processes) as pool:
+        total_amount = len(args)
         iter = pool.imap_unordered(dispatch_conversion, args)
-        for i in iter:
-            print("Done")
+        for i, (print_str, success) in enumerate(iter):
+            if success:
+                print(f"Completed conversion and merger into {print_str}: ({i}/{total_amount})")
+            else:
+                print(f"Failed to convert {print_str}: ({i}/{total_amount})")
 
 
 if __name__ == "__main__":
