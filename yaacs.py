@@ -13,6 +13,8 @@ import tempfile
 from typing import Any
 
 VERSION = "0.1.1"
+audio_files = ["mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff"]
+image_files = ["jpg", "png", "tiff", "jpeg"]
 
 
 @dataclasses.dataclass
@@ -42,8 +44,9 @@ class DispatchArgs:
     bitrate: str | None
     delete_originals: bool
 
+
 # The command parser is recursive. This makes that possible
-class CustomPrintingArgParse(argparse.ArgumentParser):  
+class CustomPrintingArgParse(argparse.ArgumentParser):
     def print_help(self, file=None):
         if not file:
             file = sys.stdout
@@ -51,10 +54,6 @@ class CustomPrintingArgParse(argparse.ArgumentParser):
             _ = file.write(self.modded_help_output)
         else:
             super().print_help(file)
-
-
-audio_files = ["mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff"]
-image_files = ["jpg", "png", "tiff", "jpeg"]
 
 
 def get_metadata(music_file: pathlib.Path) -> dict[str, Any]:
@@ -93,7 +92,7 @@ def add_cue(
     final = subprocess.run(
         [
             "ffmpeg",
-            "-v", 
+            "-v",
             "quiet",
             "-i",
             str(temp_file),
@@ -116,7 +115,7 @@ def add_cue(
     return actual_file
 
 
-def get_performer(metadata: Any) -> str: # Most formats don't have a performer tag
+def get_performer(metadata: Any) -> str:  # Most formats don't have a performer tag
     if "performer" in metadata["format"]["tags"]:
         return metadata["format"]["tags"]["performer"]
     if "narratedby" in metadata["format"]["tags"]:
@@ -170,6 +169,7 @@ def final_conversion(
     conversion = subprocess.run(args)
     return conversion.returncode == 0
 
+
 # FFMPEG cannot map covers to opus (11/13/24)
 def attach_image(output_file: pathlib.Path, cover_image: pathlib.Path) -> bool:
     attachment = subprocess.run(
@@ -183,7 +183,18 @@ def extract_embedded_image(
 ) -> pathlib.Path | None:
     outfile = temp_dir.joinpath(f"{media_file.stem}.{codec}")
     extraction = subprocess.run(
-        ["ffmpeg", "-v", "quiet", "-i", str(media_file), "-map", "0:v:0", "-vcodec", "copy", "outfile"]
+        [
+            "ffmpeg",
+            "-v",
+            "quiet",
+            "-i",
+            str(media_file),
+            "-map",
+            "0:v:0",
+            "-vcodec",
+            "copy",
+            "outfile",
+        ]
     )
     if extraction.returncode != 0:
         return None
@@ -327,7 +338,7 @@ def merge_together(
             args.extend(["-map_metadata", "1", "-map_chapters", "1"])
         # If auto, preserve bitrate
         if auto_bitrate and first_suffix == ".opus":
-            args.extend(["-c:a", "copy", str(output_file)])  
+            args.extend(["-c:a", "copy", str(output_file)])
         else:
             args.extend(
                 [
@@ -505,7 +516,12 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         if len(media_locations) > 1:
             if cuesheet:
                 print("Error! Cannot have a singular cuesheet with multiple files")
-                return ",".join(media_location.name for media_location in args.media_locations), False 
+                return (
+                    ",".join(
+                        media_location.name for media_location in args.media_locations
+                    ),
+                    False,
+                )
             success = merge_together(
                 file_metadata,
                 metadata_file,
@@ -521,7 +537,13 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                 input_file = add_cue(input_file, cuesheet, temp_dir_path)
                 if not input_file:
                     print("Could not attach chapters")
-                    return ",".join(media_location.name for media_location in args.media_locations), False 
+                    return (
+                        ",".join(
+                            media_location.name
+                            for media_location in args.media_locations
+                        ),
+                        False,
+                    )
             elif not auto_chapters or file_metadata[0]["chapters"]:
                 success = final_conversion(
                     input_file,
@@ -544,7 +566,13 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                     input_file = add_cue(input_file, temp_cue_file, temp_dir_path)
                     if not input_file:
                         print("Could not add chapters to input.")
-                        return ",".join(media_location.name for media_location in args.media_locations), False 
+                        return (
+                            ",".join(
+                                media_location.name
+                                for media_location in args.media_locations
+                            ),
+                            False,
+                        )
                 if not cue_sheet_text:
                     print("Warning: No Chapters Found")
                 success = final_conversion(
@@ -562,7 +590,10 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         for loc in media_locations:
             loc.unlink()
     if not success:
-        return ",".join(media_location.name for media_location in args.media_locations), False 
+        return (
+            ",".join(media_location.name for media_location in args.media_locations),
+            False,
+        )
     return output_file.name, True
 
 
@@ -729,7 +760,9 @@ def main():
         iter = pool.imap_unordered(dispatch_conversion, args)
         for i, (print_str, success) in enumerate(iter):
             if success:
-                print(f"Completed conversion and merger into {print_str}: ({i}/{total_amount})")
+                print(
+                    f"Completed conversion and merger into {print_str}: ({i}/{total_amount})"
+                )
             else:
                 print(f"Failed to convert {print_str}: ({i}/{total_amount})")
 
