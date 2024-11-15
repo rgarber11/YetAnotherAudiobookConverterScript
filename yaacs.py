@@ -12,7 +12,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 
@@ -173,7 +173,7 @@ def final_conversion(
 # FFMPEG cannot map covers to opus (11/13/24)
 def attach_image(output_file: pathlib.Path, cover_image: pathlib.Path) -> bool:
     attachment = subprocess.run(
-        ["opustags", str(output_file), "-i", "--set_cover", str(cover_image)]
+        ["opustags", str(output_file), "-i", "--set-cover", str(cover_image)]
     )
     return attachment.returncode == 0
 
@@ -181,6 +181,8 @@ def attach_image(output_file: pathlib.Path, cover_image: pathlib.Path) -> bool:
 def extract_embedded_image(
     media_file: pathlib.Path, temp_dir: pathlib.Path, codec: str
 ) -> pathlib.Path | None:
+    if codec[0] == "m":
+        codec = codec[1:]
     outfile = temp_dir.joinpath(f"{media_file.stem}.{codec}")
     extraction = subprocess.run(
         [
@@ -194,7 +196,7 @@ def extract_embedded_image(
             "0:v:0",
             "-vcodec",
             "copy",
-            "outfile",
+            outfile,
         ]
     )
     if extraction.returncode != 0:
@@ -415,7 +417,7 @@ def resolve_automatic_conversion(
     for folder in get_folders_of_files(media_location):
         output_file = folder.joinpath(f"{folder.stem}.opus").expanduser().resolve()
         if output_file.exists():
-            x = input("File {output_file} exists: Overwrite? (y/N): ")
+            x = input(f"File {output_file} exists: Overwrite? (y/N): ")
             if x not in {"y", "Y"}:
                 sys.exit(1)
         ans.append(
@@ -515,11 +517,6 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                 bitrate = "192k|"
             else:
                 bitrate = "32k|"
-        cover_image = (
-            cover_image
-            if cover_image
-            else discover_cover_image(file_metadata, temp_dir_path)
-        )
         success = False
         if len(media_locations) > 1:
             if cuesheet:
@@ -592,14 +589,21 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                     performer,
                 )
 
-    if cover_image:
-        attach_image(output_file, cover_image)
+        cover_image = (
+            cover_image
+            if cover_image
+            else discover_cover_image(file_metadata, temp_dir_path)
+        )
+        if cover_image:
+            attach_image(output_file, cover_image)
+        else:
+            print(f"Cover image not found for {", ".join(loc.name for loc in args.media_locations)}")
     if success and delete_originals:
         for loc in media_locations:
             loc.unlink()
     if not success:
         return (
-            ",".join(media_location.name for media_location in args.media_locations),
+            ", ".join(media_location.name for media_location in args.media_locations),
             False,
         )
     return output_file.name, True
@@ -616,18 +620,26 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
             if namespace.output:
                 output_file = pathlib.Path(namespace.output).expanduser().resolve()
                 if output_file.exists():
-                    x = input("File {output_file} exists: Overwrite? (y/N): ")
+                    x = input(f"File {output_file} exists: Overwrite? (y/N): ")
                     if x not in {"y", "Y"}:
                         sys.exit(1)
             else:
                 first_input = pathlib.Path(namespace.input[0])
-                output_file = (
-                    first_input.parent.joinpath(f"{first_input.stem}.opus")
-                    .expanduser()
-                    .resolve()
-                )
+                if first_input.is_dir():
+                    output_file = (
+                        first_input.joinpath(f"{first_input.stem}.opus")
+                        .expanduser()
+                        .resolve()
+                    )
+                else:
+                    output_file = (
+                        first_input.parent.joinpath(f"{first_input.stem}.opus")
+                        .expanduser()
+                        .resolve()
+                    )
+                print(f"{", ".join(namespace.input)} will be outputted to {str(output_file)}")
                 if output_file.exists():
-                    x = input("File {output_file} exists: Overwrite? (y/N): ")
+                    x = input(f"File {output_file} exists: Overwrite? (y/N): ")
                     if x not in {"y", "Y"}:
                         sys.exit(1)
             metadata = None
@@ -773,6 +785,8 @@ def main():
         print("Error: No inputs specified")
         sys.exit(1)
     args = validate_inputs(chunks)
+    for arg in args:
+        print(f"Converting {",".join(str(loc) for loc in arg.media_locations)}")
     processes = global_args.threads if global_args.threads != 0 else None
     with multiprocessing.Pool(processes=processes) as pool:
         total_amount = len(args)
@@ -780,10 +794,10 @@ def main():
         for i, (print_str, success) in enumerate(iter):
             if success:
                 print(
-                    f"Completed conversion and merger into {print_str}: ({i}/{total_amount})"
+                    f"Completed conversion and merger into {print_str}: ({i+1}/{total_amount})"
                 )
             else:
-                print(f"Failed to convert {print_str}: ({i}/{total_amount})")
+                print(f"Failed to convert {print_str}: ({i+1}/{total_amount})")
 
 
 if __name__ == "__main__":
