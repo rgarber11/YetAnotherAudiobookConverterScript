@@ -12,7 +12,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 
@@ -56,6 +56,10 @@ class CustomPrintingArgParse(argparse.ArgumentParser):
             super().print_help(file)
 
 
+def get_initial_int(x: str) -> int:
+    return int(x.replace(x.lstrip("0123456789"), ""))
+
+
 def get_metadata(music_file: pathlib.Path) -> dict[str, Any]:
     json_string = subprocess.run(
         [
@@ -83,34 +87,42 @@ def add_cue(
 ) -> pathlib.Path | None:
     actual_file = temp_directory.joinpath(f"{music_file.stem}.mka")
     temp_file = temp_directory.joinpath(f"{music_file.stem}.temp.mka")
-    temporary = subprocess.run(
-        ["mkvmerge", str(music_file), "--chapters", str(cue_file), "-o", str(temp_file)]
-    )
+    temp_args = [
+        "mkvmerge",
+        "-q",
+        str(music_file),
+        "--chapters",
+        str(cue_file),
+        "-o",
+        str(temp_file),
+    ]
+    temporary = subprocess.run(temp_args)
     if temporary.returncode != 0:
+        print(temp_args)
         return None
     # FFMpeg does not read chapters correctly when reencoding to opus from mka
-    final = subprocess.run(
-        [
-            "ffmpeg",
-            "-v",
-            "quiet",
-            "-i",
-            str(temp_file),
-            "-i",
-            str(music_file),
-            "-map",
-            "0",
-            "-map_chapters",
-            "0",
-            "-map_metadata",
-            "1",
-            "-c",
-            "copy",
-            str(actual_file),
-        ]
-    )
+    final_args = [
+        "ffmpeg",
+        "-v",
+        "quiet",
+        "-i",
+        str(temp_file),
+        "-i",
+        str(music_file),
+        "-map",
+        "0",
+        "-map_chapters",
+        "0",
+        "-map_metadata",
+        "1",
+        "-c",
+        "copy",
+        str(actual_file),
+    ]
+    final = subprocess.run(final_args)
     temp_file.unlink()
     if final.returncode != 0:
+        print(final_args)
         return None
     return actual_file
 
@@ -120,10 +132,10 @@ def get_performer(metadata: Any) -> str:  # Most formats don't have a performer 
         return metadata["format"]["tags"]["performer"]
     if "narratedby" in metadata["format"]["tags"]:
         return metadata["format"]["tags"]["narratedby"]
-    if "album_artist" in metadata["format"]["tags"]:
-        return metadata["format"]["tags"]["album_artist"]
     if "composer" in metadata["format"]["tags"]:
         return metadata["format"]["tags"]["composer"]
+    if "album_artist" in metadata["format"]["tags"]:
+        return metadata["format"]["tags"]["album_artist"]
     return ""
 
 
@@ -138,7 +150,14 @@ def final_conversion(
     args = ["ffmpeg", "-v", "quiet", "-i", str(init_file)]
     if metadata_file:
         args.extend(
-            ["-f", "ffmetadata", "-i", str(metadata_file), "-map_metadata", "1"]
+            [
+                "-f",
+                "ffmetadata",
+                "-i",
+                str(metadata_file),
+                "-map_metadata",
+                "1",
+            ]
         )
         if auto_chapters:
             args.extend(["-map_chapters", "0"])
@@ -153,9 +172,9 @@ def final_conversion(
     else:
         args.extend(
             [
-                "-c:v",
+                "-c:a",
                 "libopus",
-                "-b:v",
+                "-b:a",
                 bitrate.replace("|", ""),
                 "-vbr",
                 "on",
@@ -167,6 +186,8 @@ def final_conversion(
             ]
         )
     conversion = subprocess.run(args)
+    if conversion.returncode != 0:
+        print(args)
     return conversion.returncode == 0
 
 
@@ -209,7 +230,25 @@ def generate_chapters_for_folder(
 ) -> pathlib.Path:
     chapters: list[Chapter] = []
     for file in file_metadata:
-        if "title" in file["format"]["tags"]:
+        if file["chapters"]:
+            for chapter in file["chapters"]:
+                prepend = (
+                    file["format"]["tags"]["title"]
+                    if "title" in file["format"]["tags"]
+                    else file["format"]["filename"].stem
+                )
+                chapters.append(
+                    Chapter(
+                        (
+                            f"{prepend} - {chapter["tags"]["title"]}"
+                            if "title" in chapter["tags"]
+                            else f"{prepend} - Chapter {int(chapter["id"]) + 1}"
+                        ),
+                        (float(chapter["end_time"]) - float(chapter["start_time"]))
+                        * 1000,
+                    )
+                )
+        elif "title" in file["format"]["tags"]:
             chapters.append(
                 Chapter(
                     file["format"]["tags"]["title"],
@@ -308,7 +347,8 @@ def merge_together(
         )
         with concat_filename.open("w+") as concat_list:
             concat_list.writelines(
-                f"file '{file["format"]["filename"]}'\n" for file in file_metadata
+                f"file '{str(file["format"]["filename"]).replace("'", "'\\''")}'\n"
+                for file in file_metadata
             )
         args.extend(
             [
@@ -394,6 +434,8 @@ def merge_together(
         )
     # print(args)
     merger = subprocess.run(args)
+    if merger.returncode != 0:
+        print(args)
     return merger.returncode == 0
 
 
@@ -486,11 +528,11 @@ def prepare_file_metadata(media_locations: list[pathlib.Path]) -> list[Any]:
     if all("track" in meta["format"]["tags"] for meta in file_metadata):
         file_metadata.sort(
             key=lambda x: (
-                (1, int(x["format"]["tags"]["track"]))
+                (1, get_initial_int(x["format"]["tags"]["track"]))
                 if not "disc_number" in x["format"]["tags"]
                 else (
-                    int(x["format"]["tags"]["disc_number"]),
-                    int(x["format"]["tags"]["track"]),
+                    get_initial_int(x["format"]["tags"]["disc_number"]),
+                    get_initial_int(x["format"]["tags"]["track"]),
                 )
             )
         )
@@ -538,57 +580,39 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         else:
             performer = get_performer(file_metadata[0])
             input_file = media_locations[0]
+            temp_cue_file = temp_dir_path.joinpath(f"{input_file.stem}.cue")
+            found_chapters = not auto_chapters
             if cuesheet:
                 input_file = add_cue(input_file, cuesheet, temp_dir_path)
-                if not input_file:
-                    print("Could not attach chapters")
-                    return (
-                        ",".join(
-                            media_location.name
-                            for media_location in args.media_locations
-                        ),
-                        False,
+                found_chapters = True
+            elif auto_chapters and "CUESHEET" in file_metadata[0]["format"]["tags"]:
+                with temp_cue_file.open("w+") as temp_cue:
+                    _ = temp_cue.write(
+                        f'FILE "{input_file.name}" {input_file.suffix[1:]}\n{file_metadata[0]["format"]["tags"]["CUESHEET"]}\n'
                     )
-            elif not auto_chapters or file_metadata[0]["chapters"]:
-                success = final_conversion(
-                    input_file,
-                    output_file,
-                    metadata_file,
-                    auto_chapters,
-                    bitrate,
-                    performer,
-                )
-            else:
-                cue_sheet_text = None
-                if file_metadata[0]["format"]["tags"]["CUESHEET"]:
-                    cue_sheet_text = file_metadata[0]["format"]["CUESHEET"]
-                if file_metadata[0]["format"]["tags"]["cuesheet"]:
-                    cue_sheet_text = file_metadata[0]["format"]["cuesheet"]
-                temp_cue_file = temp_dir_path.joinpath(f"{input_file.stem}.cue")
-                if cue_sheet_text:
-                    with temp_cue_file.open("w+") as temp_cue:
-                        _ = temp_cue.write(cue_sheet_text)
-                    input_file = add_cue(input_file, temp_cue_file, temp_dir_path)
-                    if not input_file:
-                        print("Could not add chapters to input.")
-                        return (
-                            ",".join(
-                                media_location.name
-                                for media_location in args.media_locations
-                            ),
-                            False,
-                        )
-                if not cue_sheet_text:
-                    print("Warning: No Chapters Found")
-                success = final_conversion(
-                    input_file,
-                    output_file,
-                    metadata_file,
-                    auto_chapters,
-                    bitrate,
-                    performer,
-                )
-
+                input_file = add_cue(input_file, temp_cue_file, temp_dir_path)
+                found_chapters = True
+            elif auto_chapters and "cuesheet" in file_metadata[0]["format"]["tags"]:
+                with temp_cue_file.open("w+") as temp_cue:
+                    _ = temp_cue.write(
+                        f'FILE "{input_file.name}" {input_file.suffix[1:]}\n{file_metadata[0]["format"]["tags"]["cuesheet"]}\n'
+                    )
+                input_file = add_cue(input_file, temp_cue_file, temp_dir_path)
+                found_chapters = True
+            if not input_file:
+                return media_locations[0].name, False
+            if file_metadata[0]["chapters"]:
+                found_chapters = True
+            if not found_chapters:
+                print("Warning: Chapters not found for {media_locations[0].name}")
+            success = final_conversion(
+                input_file,
+                output_file,
+                metadata_file,
+                auto_chapters,
+                bitrate,
+                performer,
+            )
         cover_image = (
             cover_image
             if cover_image
@@ -597,7 +621,9 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         if cover_image:
             attach_image(output_file, cover_image)
         else:
-            print(f"Cover image not found for {", ".join(loc.name for loc in args.media_locations)}")
+            print(
+                f"Cover image not found for {", ".join(loc.name for loc in args.media_locations)}"
+            )
     if success and delete_originals:
         for loc in media_locations:
             loc.unlink()
@@ -619,10 +645,6 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
         if namespace.input:
             if namespace.output:
                 output_file = pathlib.Path(namespace.output).expanduser().resolve()
-                if output_file.exists():
-                    x = input(f"File {output_file} exists: Overwrite? (y/N): ")
-                    if x not in {"y", "Y"}:
-                        sys.exit(1)
             else:
                 first_input = pathlib.Path(namespace.input[0])
                 if first_input.is_dir():
@@ -637,11 +659,13 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
                         .expanduser()
                         .resolve()
                     )
-                print(f"{", ".join(namespace.input)} will be outputted to {str(output_file)}")
-                if output_file.exists():
-                    x = input(f"File {output_file} exists: Overwrite? (y/N): ")
-                    if x not in {"y", "Y"}:
-                        sys.exit(1)
+                print(
+                    f"{", ".join(namespace.input)} will be outputted to {str(output_file)}"
+                )
+            if output_file.exists():
+                x = input(f"File {output_file} exists: Overwrite? (y/N): ")
+                if x not in {"y", "Y"}:
+                    sys.exit(1)
             metadata = None
             auto_chapters = True
             if namespace.metadata:
@@ -748,12 +772,6 @@ def main():
         prog="yaacs",
         description="A Script to convert audiobooks to .opus",
         formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version=f"%(prog)s {VERSION}",
     )
     parser.add_argument(
         "-t",
