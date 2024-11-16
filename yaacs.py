@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -701,6 +701,8 @@ def prepare_single_file_conversion(
 
 
 def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
+    logger = logging.getLogger("yaacs subprocess")
+    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
     media_locations = flatten_manual_query(args.media_locations)
     metadata_file = args.metadata_file
     cuesheet = args.cuesheet
@@ -709,7 +711,6 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     output_file = args.output_file
     bitrate = args.bitrate
     delete_originals = args.delete_originals
-    logger = logging.getLogger("yaacs subprocess")
     try:
         file_metadata = prepare_file_metadata(media_locations, logger)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -994,10 +995,6 @@ def main():
         single_process_logger.error("Error: No inputs specified")
         sys.exit(1)
     args = validate_inputs(chunks)
-    for arg in args:
-        single_process_logger.warning(
-            f"Converting {",".join(str(loc) for loc in arg.media_locations)}"
-        )
     processes = global_args.threads if global_args.threads != 0 else None
     with multiprocessing.Pool(processes=processes) as pool:
         total_amount = len(args)
