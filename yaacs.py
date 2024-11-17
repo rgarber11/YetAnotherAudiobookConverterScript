@@ -14,13 +14,14 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
     {
         "version": 1,
-        "formatters": {"simple": {"format": "[%(levelname)s]: %(message)s"}},
+        "disable_existing_loggers": False,
+        "formatters": {"simple": {"format": "%(message)s"}},
         "handlers": {
             "stdout": {
                 "class": "logging.StreamHandler",
