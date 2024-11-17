@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.1.1"
+VERSION = "1.1.3"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -148,6 +148,8 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> dict[str, 
         capture_output=True,
     ).stdout.decode("utf-8")
     metadata = json.loads(json_string)
+    if "tags" not in metadata["format"]:
+        metadata["format"]["tags"] = {}
     if music_file.suffix == ".opus":  # FFMpeg maps opus tags wrong (11/13/24)
         for k, v in metadata["streams"][0]["tags"]:
             metadata["format"]["tags"][k] = v
@@ -550,8 +552,8 @@ def merge_together(
 
 # Auto-detection recursion
 def get_folders_of_files(media_location: pathlib.Path) -> list[pathlib.Path]:
-    if all(not loc.is_dir() for loc in media_location.iterdir()):
-        if not list(loc.suffix[1:] in audio_files for loc in media_location.iterdir()):
+    if all(loc.is_file() for loc in media_location.iterdir()):
+        if not list(loc for loc in media_location.iterdir() if loc.suffix[1:] in audio_files):
             return []
         return [media_location]
     dirs = (loc for loc in media_location.iterdir() if loc.is_dir())
@@ -702,9 +704,7 @@ def prepare_single_file_conversion(
 
 
 def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
-    logger = logging.getLogger("yaacs subprocess")
-    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
-    media_locations = flatten_manual_query(args.media_locations)
+    media_locations = flatten_manual_query(args.media_locations.copy())
     metadata_file = args.metadata_file
     cuesheet = args.cuesheet
     cover_image = args.cover_image
@@ -712,6 +712,8 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     output_file = args.output_file
     bitrate = args.bitrate
     delete_originals = args.delete_originals
+    logger = logging.getLogger("yaacs subprocess")
+    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
     try:
         file_metadata = prepare_file_metadata(media_locations, logger)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -806,7 +808,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
             )
         return output_file.name, True
     except Exception as e:
-        logger.exception(e)
+        logger.exception(f"Exception when converting {", ".join(media_location.name for media_location in args.media_locations)}: {repr(e)}")
         return (
             ", ".join(media_location.name for media_location in args.media_locations),
             False,
