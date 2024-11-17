@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.1.3"
+VERSION = "1.2.0"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -648,9 +648,9 @@ def prepare_file_metadata(
         file_metadata.sort(
             key=lambda x: (
                 (1, get_initial_int(x["format"]["tags"]["track"]))
-                if "disc_number" not in x["format"]["tags"]
+                if "disc" not in x["format"]["tags"]
                 else (
-                    get_initial_int(x["format"]["tags"]["disc_number"]),
+                    get_initial_int(x["format"]["tags"]["disc"]),
                     get_initial_int(x["format"]["tags"]["track"]),
                 )
             )
