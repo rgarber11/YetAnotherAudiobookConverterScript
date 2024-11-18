@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -509,7 +509,7 @@ def merge_together(
     else:
         logger.info("Heterogeneous inputs. Using concatenation filter.")
         for file in file_metadata:
-            args.extend(["-i", file["format"]["filename"]])
+            args.extend(["-i", str(file["format"]["filename"])])
         args.extend(["-f", "ffmetadata", "-i", str(metadata_file)])
         if auto_chapters:
             args.extend(["-f", "ffmetadata", "-i", str(chapter_file)])
