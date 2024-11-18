@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -782,7 +782,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                 if cover_image
                 else discover_cover_image(file_metadata, temp_dir_path, logger)
             )
-            if cover_image:
+            if success and cover_image:
                 image_sucess = attach_image(output_file, cover_image, logger)
                 if not image_sucess:
                     logger.error(f"Failed to attach cover image to {output_file}")
