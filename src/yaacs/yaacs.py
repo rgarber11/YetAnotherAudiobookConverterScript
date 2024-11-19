@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.3.1"
+VERSION = "1.3.2"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff", "opus")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
