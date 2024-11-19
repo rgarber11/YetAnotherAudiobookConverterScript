@@ -14,8 +14,8 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.2.2"
-audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff")
+VERSION = "1.3.0"
+audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff", "opus")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
     {
@@ -553,7 +553,9 @@ def merge_together(
 # Auto-detection recursion
 def get_folders_of_files(media_location: pathlib.Path) -> list[pathlib.Path]:
     if all(loc.is_file() for loc in media_location.iterdir()):
-        if not list(loc for loc in media_location.iterdir() if loc.suffix[1:] in audio_files):
+        if not list(
+            loc for loc in media_location.iterdir() if loc.suffix[1:] in audio_files
+        ):
             return []
         return [media_location]
     dirs = (loc for loc in media_location.iterdir() if loc.is_dir())
@@ -768,6 +770,18 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                         ),
                         False,
                     )
+                if input_file.suffix == ".opus" and bitrate[-1] == "|":
+                    logger.warning(
+                        f"{input_file.name} is already a .opus file. An explicit bitrate is required for downsampling."
+                    )
+                    return (
+                        ", ".join(
+                            media_location.name
+                            for media_location in args.media_locations
+                        ),
+                        False,
+                    )
+
                 success = final_conversion(
                     input_file,
                     output_file,
@@ -808,7 +822,9 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
             )
         return output_file.name, True
     except Exception as e:
-        logger.exception(f"Exception when converting {", ".join(media_location.name for media_location in args.media_locations)}: {repr(e)}")
+        logger.exception(
+            f"Exception when converting {", ".join(media_location.name for media_location in args.media_locations)}: {repr(e)}"
+        )
         return (
             ", ".join(media_location.name for media_location in args.media_locations),
             False,
