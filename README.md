@@ -1,13 +1,32 @@
 # YAACS
-A conversion script for audiobooks
+
+---
+
+Convert your audiobooks to .opus for smaller files at equivalent quality.
+
 ## Features
+
 - Automatic bitrate selection
 - (opt-in) Automatic audiobook discovery
 - Automatic cover image discovery
 - Automatic chapter discovery
 - (opt-in) Automatic deletion of input files
+- Multiprocessing to increase conversion throughput
+
+## Installation
+
+YAACS depends on the following packages for conversion:
+
+- [mkvtoolnix](https://mkvtoolnix.download/) for CUE file chapter parsing
+- [FFmpeg](https://ffmpeg.org/) for metadata detection and conversion
+- [opustags](https://github.com/fmang/opustags) for cover image insertion.
+
+However, YAACS does not depend on any python packages. As such, it can be installed via your preferred Python package manager, or simply run directly without installation.
+
 ## Usage
-```
+
+```sh
+$ yaacs -h
 usage: yaacs [-h] [-v] [-t THREADS] [(-i INPUT [INPUT ...] | -a LOCATION [LOCATION ...]) [-x] [-o OUTPUT] [-m METADATA | -M METADATACHAPTER] [-b BITRATE] [-c CUESHEET] [-I COVER]]+
 
 A Script to convert audiobooks to .opus
@@ -34,4 +53,6 @@ options:
                         Set location for cuesheet file to read for chapter data. Only works if the input is a singular file.
   -I COVER, --cover COVER
                         Explicitly set final cover file. Will attempt to autodiscover cover if not set.
+$ yaacs -a ~/Audiobooks -x # Automatically detect all audiobooks (folders with no subfolders containing audio files) in ~/Audiobooks and convert them. Delete after conversion.
+$ yaacs -i Warbreaker -m warbreaker.ffmeta -b 64k # Convert the audiobook within the Warbreaker folder at a bitrate of 64kbps. Use the warbreaker.ffmeta file for metadata, but still auto-detect chapters.
 ```
