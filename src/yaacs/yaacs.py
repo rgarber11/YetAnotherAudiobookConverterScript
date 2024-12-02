@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff", "opus")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -576,6 +576,7 @@ def resolve_automatic_conversion(
             x = input(f"File {output_file} exists: Overwrite? (y/N): ")
             if x not in {"y", "Y"}:
                 sys.exit(1)
+            output_file.unlink()
         ans.append(
             DispatchArgs(
                 [folder],
