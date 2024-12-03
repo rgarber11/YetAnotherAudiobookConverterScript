@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import importlib.metadata
 import json
 import logging
 import logging.config
@@ -14,7 +15,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.3.4"
+VERSION = importlib.metadata.version("yaacs")
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff", "opus")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
