@@ -595,13 +595,13 @@ def resolve_automatic_conversion(
 def flatten_manual_query(media_locations: list[pathlib.Path]) -> list[pathlib.Path]:
     delete_idxs = [1]
     while len(delete_idxs) > 0:
-        delete_idxs = []
+        delete_idxs.clear()
         size = len(media_locations)
         for i in range(size):
             if media_locations[i].is_dir():
+                delete_idxs.append(i)
                 for suffix in audio_files:
                     media_locations.extend(media_locations[i].glob(f"*.{suffix}"))
-                delete_idxs.append(i)
                 media_locations.extend(
                     loc for loc in media_locations[i].iterdir() if loc.is_dir()
                 )
