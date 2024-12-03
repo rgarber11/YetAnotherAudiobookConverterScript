@@ -14,7 +14,7 @@ import sys
 import tempfile
 from typing import Any
 
-VERSION = "1.3.3"
+VERSION = "1.3.4"
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff", "opus")
 image_files = ("jpg", "png", "tiff", "jpeg")
 logging.config.dictConfig(
@@ -605,7 +605,7 @@ def flatten_manual_query(media_locations: list[pathlib.Path]) -> list[pathlib.Pa
                 media_locations.extend(
                     loc for loc in media_locations[i].iterdir() if loc.is_dir()
                 )
-        for idx in delete_idxs:
+        for idx in reversed(delete_idxs):
             del media_locations[idx]
     return media_locations
 
@@ -843,7 +843,7 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
             if namespace.output:
                 output_file = pathlib.Path(namespace.output).expanduser().resolve()
             else:
-                first_input = pathlib.Path(namespace.input[0])
+                first_input = pathlib.Path(namespace.input[0]).expanduser().resolve()
                 if first_input.is_dir():
                     output_file = (
                         first_input.joinpath(f"{first_input.stem}.opus")
