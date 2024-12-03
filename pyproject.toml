@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio :: Conversion",
     "Typing :: Typed",
 ]
-
+description = "Convert your audiobooks to opus to save space while maintaining quality."
 [project.urls]
 Homepage = "https://github.com/rgarber11/YetAnotherAudiobookConverterScript/"
 Issues = "https://github.com/rgarber11/YetAnotherAudiobookConverterScript/issues"
