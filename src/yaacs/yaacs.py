@@ -69,9 +69,7 @@ class GlobalArgsArgparse(argparse.ArgumentParser):
     def __init__(
         self, *args, command_parser_help: str, command_parser_usage: str, **kwargs
     ):
-        self.command_parser_help: str = (
-            f"  {command_parser_help[command_parser_help.find("-i INPUT [INPUT ...],"):]}"
-        )
+        self.command_parser_help: str = "\n".join(command_parser_help.splitlines()[4:])
         self.command_parser_usage: str = (
             f"[{command_parser_usage[command_parser_usage.find("("):].rstrip()}]+"
         )

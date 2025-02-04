@@ -1,0 +1,7 @@
+__pycache__/
+a.cue
+a.files
+build/
+dist/
+src/yaacs.egg-info/
+venv/
