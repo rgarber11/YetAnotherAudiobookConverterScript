@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "yaacs"
@@ -8,7 +8,7 @@ authors = [
         { name="Richard Garber", email="rg.1029384756@gmail.com" },
 ]
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -18,7 +18,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Topic :: File Formats",
     "Topic :: Multimedia :: Sound/Audio :: Conversion",
     "Typing :: Typed",
