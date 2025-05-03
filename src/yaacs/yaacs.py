@@ -139,7 +139,7 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> dict[str, 
         "-show_entries",
         "stream:format",
         "-show_chapters",
-        str(music_file),
+        f"file:{music_file}",
     ]
     logger.info(f"Running {metadata_args}")
     json_string = subprocess.run(
@@ -185,9 +185,9 @@ def add_cue(
         "-v",
         "quiet",
         "-i",
-        str(temp_file),
+        f"file:{temp_file}",
         "-i",
-        str(music_file),
+        f"file:{music_file}",
         "-map",
         "0",
         "-map_chapters",
@@ -196,7 +196,7 @@ def add_cue(
         "1",
         "-c",
         "copy",
-        str(file_with_chapters),
+        f"file:{file_with_chapters}",
     ]
     final = subprocess.run(final_args)
     temp_file.unlink()
@@ -230,14 +230,14 @@ def final_conversion(
     logger: logging.Logger,
 ) -> bool:
     logger.info(f"Converting single file {init_file.name}")
-    args = ["ffmpeg", "-v", "quiet", "-y", "-i", str(init_file)]
+    args = ["ffmpeg", "-v", "quiet", "-y", "-i", f"file:{init_file}"]
     if metadata_file:
         args.extend(
             [
                 "-f",
                 "ffmetadata",
                 "-i",
-                str(metadata_file),
+                f"file:{metadata_file}",
                 "-map_metadata",
                 "1",
             ]
@@ -251,7 +251,7 @@ def final_conversion(
         if performer:
             args.extend(["-metadata", f"performer={performer}"])
     if init_file.suffix != ".opus" and bitrate == "-1":
-        args.extend(["-c", "copy", str(output_file)])
+        args.extend(["-c", "copy", f"file:{output_file}"])
     else:
         args.extend(
             [
@@ -265,7 +265,7 @@ def final_conversion(
                 "10",
                 "-application",
                 "voip",
-                str(output_file),
+                f"file:{output_file}",
             ]
         )
     conversion = subprocess.run(args)
@@ -305,12 +305,12 @@ def extract_embedded_image(
         "quiet",
         "-y",
         "-i",
-        str(media_file),
+        f"file:{media_file}",
         "-map",
         "0:v:0",
         "-vcodec",
         "copy",
-        str(file_with_image),
+        f"file:{file_with_image}",
     ]
     extraction = subprocess.run(extraction_args)
     if extraction.returncode != 0:
@@ -461,11 +461,11 @@ def merge_together(
                 "-safe",
                 "0",
                 "-i",
-                str(concat_filename),
+                f"file:{concat_filename}",
                 "-f",
                 "ffmetadata",
                 "-i",
-                str(metadata_file),
+                f"file:{metadata_file}",
             ]
         )
         if auto_chapters:
@@ -474,7 +474,7 @@ def merge_together(
                     "-f",
                     "ffmetadata",
                     "-i",
-                    str(chapter_file),
+                    f"file:{chapter_file}",
                     "-map_metadata",
                     "1",
                     "-map_chapters",
@@ -488,7 +488,7 @@ def merge_together(
             logger.info(
                 "Default bitrate used with opus files. Preserving quality by using copy codec."
             )
-            args.extend(["-c:a", "copy", str(output_file)])
+            args.extend(["-c:a", "copy", f"file:{output_file}"])
         else:
             args.extend(
                 [
@@ -502,16 +502,16 @@ def merge_together(
                     "10",
                     "-application",
                     "voip",
-                    str(output_file),
+                    f"file:{output_file}",
                 ]
             )
     else:
         logger.info("Heterogeneous inputs. Using concatenation filter.")
         for file in file_metadata:
-            args.extend(["-i", str(file["format"]["filename"])])
-        args.extend(["-f", "ffmetadata", "-i", str(metadata_file)])
+            args.extend(["-i", f"file:{file["format"]["filename"]}"])
+        args.extend(["-f", "ffmetadata", "-i", f"file:{metadata_file}"])
         if auto_chapters:
-            args.extend(["-f", "ffmetadata", "-i", str(chapter_file)])
+            args.extend(["-f", "ffmetadata", "-i", f"file:{chapter_file}"])
         # If there are heterogeneous inputs, a filter is the only way to concatenate
         args.extend(
             [
@@ -537,7 +537,7 @@ def merge_together(
                 "10",
                 "-application",
                 "voip",
-                str(output_file),
+                f"file:{output_file}",
             ]
         )
     # print(args)
@@ -642,6 +642,8 @@ def prepare_file_metadata(
 ) -> list[Any]:
     file_metadata = [get_metadata(file, logger) for file in media_locations]
     for file in file_metadata:
+        if file["format"]["filename"].startswith("file:"):
+            file["format"]["filename"] = file["format"]["filename"][5:] # Keep filenames canonical
         file["format"]["filename"] = (
             pathlib.Path(file["format"]["filename"]).expanduser().resolve()
         )
