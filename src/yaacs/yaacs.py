@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from typing import Any
+from typing import Any, override
 
 VERSION = importlib.metadata.version("yaacs")
 audio_files = ("mp3", "m4a", "m4b", "ogg", "flac", "wav", "aiff", "opus")
@@ -52,6 +52,25 @@ class DiscoveredMetadata:
     date: str
 
 
+@dataclasses.dataclass
+class FileInfo:
+    filename: pathlib.Path
+    performer: str
+    cuesheet: str
+    chapters: list[Chapter]
+    bit_rate: int
+    title: str
+    album: str
+    genre: str
+    date: str
+    publisher: str
+    track: int | None
+    disc: int | None
+    duration: float
+    artist: str
+    cover_codec: str
+
+
 @dataclasses.dataclass(frozen=True)
 class DispatchArgs:
     media_locations: list[pathlib.Path]
@@ -71,12 +90,14 @@ class GlobalArgsArgparse(argparse.ArgumentParser):
     ):
         self.command_parser_help: str = "\n".join(command_parser_help.splitlines()[4:])
         self.command_parser_usage: str = (
-            f"[{command_parser_usage[command_parser_usage.find("("):].rstrip()}]+"
+            f"[{command_parser_usage[command_parser_usage.find(
+                "("):].rstrip()}]+"
         )
         self.modded_help: str | None = None
         self.modded_usage: str | None = None
         super().__init__(*args, **kwargs)
 
+    @override
     def format_help(self):
         # if not file:
         #     file = sys.stdout
@@ -86,18 +107,19 @@ class GlobalArgsArgparse(argparse.ArgumentParser):
                 .format_help()
                 .replace(
                     super().format_usage(),
-                    f"{super().format_usage().rstrip()} {self.command_parser_usage}\n",
+                    f"{super().format_usage().rstrip()} {
+                        self.command_parser_usage}\n",
                 )
                 + self.command_parser_help
                 + "\n"
             )
         return self.modded_help
 
+    @override
     def format_usage(self):
         if not self.modded_usage:
-            self.modded_usage = (
-                f"{super().format_usage().rstrip()} {self.command_parser_usage}\n"
-            )
+            self.modded_usage = f"{super().format_usage().rstrip()} {
+                    self.command_parser_usage}\n"
         return self.modded_usage
 
 
@@ -111,6 +133,7 @@ class CommandArgsArgparse(argparse.ArgumentParser):
         self.modded_help = modded_help
         self.modded_usage = modded_usage
 
+    @override
     def format_help(self):
         # if not file:
         #     file = sys.stdout
@@ -118,17 +141,27 @@ class CommandArgsArgparse(argparse.ArgumentParser):
             return super().format_help()
         return self.modded_help
 
+    @override
     def format_usage(self):
         if not self.modded_usage:
             return super().format_usage()
         return self.modded_usage
 
 
-def get_initial_int(x: str) -> int:  # atoi() in Python
-    return int(x.replace(x.lstrip("0123456789"), ""))
+def empty_not_none(s: str | None) -> str:
+    if not s:
+        return ""
+    return s
 
 
-def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> dict[str, Any]:
+def get_initial_int(x: str) -> int | None:  # atoi() in Python
+    try:
+        return int(x.replace(x.lstrip("0123456789"), ""))
+    except ValueError:
+        return None
+
+
+def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
     logger.info(f"Getting metadata... for {music_file.name}")
     metadata_args = [
         "ffprobe",
@@ -152,7 +185,53 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> dict[str, 
     if music_file.suffix == ".opus":  # FFMpeg maps opus tags wrong (11/13/24)
         for k, v in metadata["streams"][0]["tags"]:
             metadata["format"]["tags"][k] = v
-    return metadata
+    ans = FileInfo(
+        filename=pathlib.Path(metadata["format"]["filename"][5:])
+        .expanduser()
+        .resolve(),
+        performer=get_performer(metadata),
+        cuesheet="",
+        chapters=[],
+        bit_rate=int(metadata["format"]["bit_rate"]),
+        title=empty_not_none(metadata["format"]["tags"]["title"]),
+        album=empty_not_none(metadata["format"]["tags"]["album"]),
+        genre=empty_not_none(metadata["format"]["tags"]["genre"]),
+        date=empty_not_none(metadata["format"]["tags"]["date"]),
+        publisher=metadata["format"]["tags"]["publisher"],
+        track=get_initial_int(metadata["format"]["tags"]["track"]),
+        disc=get_initial_int(metadata["format"]["tags"]["disc"]),
+        duration=float(metadata["format"]["duration"]),
+        artist=empty_not_none(metadata["format"]["tags"]["artist"]),
+        cover_codec="",
+    )
+    if any(stream["codec_type"] == "video" for stream in metadata["streams"]):
+        ans.cover_codec = next(
+            stream["codec_name"]
+            for stream in metadata["streams"]
+            if stream["codec_type"] == "video"
+        )
+    if metadata["format"]["tags"]["CUESHEET"]:
+        ans.cuesheet = metadata["format"]["tags"]["CUESHEET"]
+    elif metadata["format"]["tags"]["cuesheet"]:
+        ans.cuesheet = metadata["format"]["tags"]["cuesheet"]
+    if metadata["chapters"]:
+        for chapter in metadata["chapters"]:
+            ans.chapters.append(
+                Chapter(
+                    (
+                        chapter["tags"]["title"]
+                        if "title" in chapter["tags"]
+                        else f"Chapter {int(chapter["id"]) + 1}"
+                    ),
+                    (
+                        (
+                            float(chapter["end_time"])
+                            - float(chapter["start_time"]) * 1000
+                        )
+                    ),
+                )
+            )
+    return ans
 
 
 def add_cue(
@@ -208,15 +287,15 @@ def add_cue(
     return file_with_chapters
 
 
-def get_performer(metadata: Any) -> str:  # Most formats don't have a performer tag
-    if "performer" in metadata["format"]["tags"]:
-        return metadata["format"]["tags"]["performer"]
-    if "narratedby" in metadata["format"]["tags"]:
-        return metadata["format"]["tags"]["narratedby"]
-    if "composer" in metadata["format"]["tags"]:
-        return metadata["format"]["tags"]["composer"]
-    if "album_artist" in metadata["format"]["tags"]:
-        return metadata["format"]["tags"]["album_artist"]
+def get_performer(raw_metadata: Any) -> str:  # Most formats don't have a performer tag
+    if "performer" in raw_metadata["format"]["tags"]:
+        return raw_metadata["format"]["tags"]["performer"]
+    if "narratedby" in raw_metadata["format"]["tags"]:
+        return raw_metadata["format"]["tags"]["narratedby"]
+    if "composer" in raw_metadata["format"]["tags"]:
+        return raw_metadata["format"]["tags"]["composer"]
+    if "album_artist" in raw_metadata["format"]["tags"]:
+        return raw_metadata["format"]["tags"]["album_artist"]
     return ""
 
 
@@ -322,41 +401,24 @@ def extract_embedded_image(
 
 
 def generate_chapters_for_folder(
-    file_metadata: list[Any], chapter_file: pathlib.Path, logger: logging.Logger
+    file_metadata: list[FileInfo], chapter_file: pathlib.Path, logger: logging.Logger
 ) -> pathlib.Path:
     chapters: list[Chapter] = []
     logger.info("Detecting Chapters...")
     for file in file_metadata:
-        if file["chapters"]:
-            for chapter in file["chapters"]:
-                prepend = (
-                    file["format"]["tags"]["title"]
-                    if "title" in file["format"]["tags"]
-                    else file["format"]["filename"].stem
-                )
+        if file.chapters:
+            for chapter in file.chapters:
+                prepend = file.title if file.title else file.filename.stem
                 chapters.append(
-                    Chapter(
-                        (
-                            f"{prepend} - {chapter["tags"]["title"]}"
-                            if "title" in chapter["tags"]
-                            else f"{prepend} - Chapter {int(chapter["id"]) + 1}"
-                        ),
-                        (float(chapter["end_time"]) - float(chapter["start_time"]))
-                        * 1000,
-                    )
+                    Chapter(f"{prepend} - {chapter.title}", chapter.duration)
                 )
-        elif "title" in file["format"]["tags"]:
-            chapters.append(
-                Chapter(
-                    file["format"]["tags"]["title"],
-                    float(file["format"]["duration"]) * 1000,
-                )
-            )
+        elif file.title:
+            chapters.append(Chapter(file.title, file.duration * 1000))
         else:
             chapters.append(
                 Chapter(
-                    pathlib.Path(file["format"]["filename"]).stem,
-                    float(file["format"]["duration"]) * 1000,
+                    file.filename.stem,
+                    file.duration * 1000,
                 )
             )
     logger.info(f"Found {len(chapters)} Chapters: {chapters}")
@@ -365,30 +427,31 @@ def generate_chapters_for_folder(
         duration = 0.0
         for chapter in chapters:
             _ = chapterIO.write(
-                f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={duration}\nEND={duration + chapter.duration}\ntitle={chapter.title}\n"
+                f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={duration}\nEND={
+                    duration + chapter.duration}\ntitle={chapter.title}\n"
             )
             duration += chapter.duration
     return chapter_file
 
 
 def generate_metadata_for_folder(
-    file_metadata: list[Any], metadata_file: pathlib.Path, logger: logging.Logger
+    file_metadata: list[FileInfo], metadata_file: pathlib.Path, logger: logging.Logger
 ) -> pathlib.Path:
     logger.info("Detecting Metadata...")
     metadata = DiscoveredMetadata("", "", "", "", "", "")
     for file in file_metadata:
-        if not metadata.title and "album" in file["format"]["tags"]:
-            metadata.title = file["format"]["tags"]["album"]
-        if not metadata.artist and "artist" in file["format"]["tags"]:
-            metadata.artist = file["format"]["tags"]["artist"]
+        if not metadata.title and "album" in file.album:
+            metadata.title = file.album
+        if not metadata.artist and file.artist:
+            metadata.artist = file.artist
         if not metadata.performer:
-            metadata.performer = get_performer(file)
-        if not metadata.genre and "genre" in file["format"]["tags"]:
-            metadata.genre = file["format"]["tags"]["genre"]
-        if not metadata.date and "date" in file["format"]["tags"]:
-            metadata.date = file["format"]["tags"]["date"]
-        if not metadata.publisher and "publisher" in file["format"]["tags"]:
-            metadata.publisher = file["format"]["tags"]["publisher"]
+            metadata.performer = file.performer
+        if not metadata.genre and file.genre:
+            metadata.genre = file.genre
+        if not metadata.date and file.date:
+            metadata.date = file.date
+        if not metadata.publisher and file.publisher:
+            metadata.publisher = file.publisher
     logger.info(f"Found metadata {metadata}")
     with metadata_file.open("w+") as metadataIO:
         metadataIO.write(";FFMETADATA1\n")
@@ -408,7 +471,7 @@ def generate_metadata_for_folder(
 
 
 def merge_together(
-    file_metadata: list[Any],
+    file_metadata: list[FileInfo],
     metadata_file: pathlib.Path | None,
     auto_chapters: bool,
     output_file: pathlib.Path,
@@ -419,7 +482,7 @@ def merge_together(
     if not metadata_file:
         metadata_file = generate_metadata_for_folder(
             file_metadata,
-            temp_dir.joinpath(f"{file_metadata[0]["format"]["filename"].stem}.ffmeta"),
+            temp_dir.joinpath(f"{file_metadata[0].filename.stem}.ffmeta"),
             logger,
         )
     auto_bitrate = False
@@ -427,16 +490,16 @@ def merge_together(
         bitrate = bitrate[:-1]
         auto_bitrate = True
     all_same_suffix = True
-    first_suffix = file_metadata[0]["format"]["filename"].suffix
+    first_suffix = file_metadata[0].filename.suffix
     for file in file_metadata:
-        if file["format"]["filename"].suffix != first_suffix:
+        if file.filename.suffix != first_suffix:
             all_same_suffix = False
 
     chapter_file = (
         generate_chapters_for_folder(
             file_metadata,
             temp_dir.joinpath(
-                f"{file_metadata[0]["format"]["filename"].stem}_chapters.ffmeta",
+                f"{file_metadata[0].filename.stem}_chapters.ffmeta",
             ),
             logger,
         )
@@ -446,12 +509,11 @@ def merge_together(
     args = ["ffmpeg", "-v", "quiet", "-y"]
     if all_same_suffix:
         logger.info("All files have the same suffix. Assuming input concatenation.")
-        concat_filename = temp_dir.joinpath(
-            f"{file_metadata[0]["format"]["filename"].stem}.files"
-        )
+        concat_filename = temp_dir.joinpath(f"{file_metadata[0].filename.stem}.files")
         with concat_filename.open("w+") as concat_list:
             concat_list.writelines(
-                f"file '{str(file["format"]["filename"]).replace("'", "'\\''")}'\n"
+                f"file '{str(file.filename
+                             ).replace("'", "'\\''")}'\n"
                 for file in file_metadata
             )
         args.extend(
@@ -508,7 +570,7 @@ def merge_together(
     else:
         logger.info("Heterogeneous inputs. Using concatenation filter.")
         for file in file_metadata:
-            args.extend(["-i", f"file:{file["format"]["filename"]}"])
+            args.extend(["-i", f"file:{file.filename}"])
         args.extend(["-f", "ffmetadata", "-i", f"file:{metadata_file}"])
         if auto_chapters:
             args.extend(["-f", "ffmetadata", "-i", f"file:{chapter_file}"])
@@ -516,7 +578,8 @@ def merge_together(
         args.extend(
             [
                 "-filter_complex",
-                f'{"".join(f"[{i}:a:0]" for i, _ in enumerate(file_metadata))}concat={len(file_metadata)}:v=0:a=1[outa]',
+                f'{"".join(f"[{i}:a:0]" for i, _ in enumerate(file_metadata))}concat={
+                    len(file_metadata)}:v=0:a=1[outa]',
                 "-map",
                 "[outa]",
                 "-map_metadata",
@@ -610,27 +673,20 @@ def flatten_manual_query(media_locations: list[pathlib.Path]) -> list[pathlib.Pa
 
 
 def discover_cover_image(
-    file_metadata: list[Any], temp_dir_path: pathlib.Path, logger: logging.Logger
+    file_metadata: list[FileInfo], temp_dir_path: pathlib.Path, logger: logging.Logger
 ) -> pathlib.Path | None:
     logger.info("Discovering cover...")
     for file in file_metadata:
-        if any(stream["codec_type"] == "video" for stream in file["streams"]):
+        if file.cover_codec:
             logger.info("Found embedded cover...")
-            codec = next(
-                stream["codec_name"]
-                for stream in file["streams"]
-                if stream["codec_type"] == "video"
-            )
             return extract_embedded_image(
-                file["format"]["filename"], temp_dir_path, codec, logger
+                file.filename, temp_dir_path, file.cover_codec, logger
             )
     logger.info("Searching for cover within folder")
     for file in file_metadata:
         images: list[pathlib.Path] = []
         for suffix in image_files:
-            images.extend(
-                img for img in file["format"]["filename"].parent.glob(f"*.{suffix}")
-            )
+            images.extend(img for img in file.filename.parent.glob(f"*.{suffix}"))
         if images:
             logger.info(f"Found cover {images[0].name}")
             return images[0]
@@ -639,34 +695,21 @@ def discover_cover_image(
 
 def prepare_file_metadata(
     media_locations: list[pathlib.Path], logger: logging.Logger
-) -> list[Any]:
+) -> list[FileInfo]:
     file_metadata = [get_metadata(file, logger) for file in media_locations]
-    for file in file_metadata:
-        if file["format"]["filename"].startswith("file:"):
-            file["format"]["filename"] = file["format"]["filename"][5:] # Keep filenames canonical
-        file["format"]["filename"] = (
-            pathlib.Path(file["format"]["filename"]).expanduser().resolve()
-        )
-    if all("track" in meta["format"]["tags"] for meta in file_metadata):
+    if all(meta.track for meta in file_metadata):
         logger.info(f"Sorting {[loc.name for loc in media_locations]} by track number")
         file_metadata.sort(
-            key=lambda x: (
-                (1, get_initial_int(x["format"]["tags"]["track"]))
-                if "disc" not in x["format"]["tags"]
-                else (
-                    get_initial_int(x["format"]["tags"]["disc"]),
-                    get_initial_int(x["format"]["tags"]["track"]),
-                )
-            )
+            key=lambda x: ((1, x.track) if not x.disc else (x.disc, x.track))
         )
     else:
         logger.info(f"Sorting {[loc.name for loc in media_locations]} by file name")
-        file_metadata.sort(key=lambda x: x["format"]["filename"].stem)
+        file_metadata.sort(key=lambda x: x.filename.stem)
     return file_metadata
 
 
 def prepare_single_file_conversion(
-    file_metadata: Any,
+    file_metadata: FileInfo,
     input_file: pathlib.Path,
     cuesheet: pathlib.Path | None,
     auto_chapters: bool,
@@ -681,25 +724,17 @@ def prepare_single_file_conversion(
     if cuesheet:
         curr_input_file = add_cue(input_file, cuesheet, temp_dir, logger)
         found_chapters = True
-    elif auto_chapters and "CUESHEET" in file_metadata["format"]["tags"]:
+    elif auto_chapters and file_metadata.cuesheet:
         logger.info(f"Found embedded cuesheet in {input_file}")
         with temp_cue_file.open("w+") as temp_cue:
             _ = temp_cue.write(
-                f'FILE "{input_file.name}" {input_file.suffix[1:]}\n{file_metadata["format"]["tags"]["CUESHEET"]}\n'
-            )
-        curr_input_file = add_cue(input_file, temp_cue_file, temp_dir, logger)
-        found_chapters = True
-    elif auto_chapters and "cuesheet" in file_metadata["format"]["tags"]:
-        logger.info(f"Found embedded cuesheet in {input_file}")
-        with temp_cue_file.open("w+") as temp_cue:
-            _ = temp_cue.write(
-                f'FILE "{input_file.name}" {input_file.suffix[1:]}\n{file_metadata["format"]["tags"]["cuesheet"]}\n'
+                f'FILE "{input_file.name}" {input_file.suffix[1:]}\n{file_metadata.cuesheet}\n'
             )
         curr_input_file = add_cue(input_file, temp_cue_file, temp_dir, logger)
         found_chapters = True
     if not curr_input_file:
         return input_file, "", False
-    if file_metadata["chapters"]:
+    if file_metadata.chapters:
         logger.info(f"Found embedded chapter data in {input_file}")
         found_chapters = True
     if not found_chapters:
@@ -717,16 +752,17 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     bitrate = args.bitrate
     delete_originals = args.delete_originals
     logger = logging.getLogger("yaacs subprocess")
-    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
+    logger.warning(
+        f"Converting {",".join(str(loc)
+                   for loc in args.media_locations)}"
+    )
     try:
         file_metadata = prepare_file_metadata(media_locations, logger)
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir_path = pathlib.Path(temp_dir).expanduser().resolve()
             if not bitrate:
                 logger.info("Setting auto-bitrate")
-                raw_bitrate = max(
-                    int(file["format"]["bit_rate"]) for file in file_metadata
-                )
+                raw_bitrate = max(int(file.bit_rate) for file in file_metadata)
                 if raw_bitrate >= 262144:
                     logger.info("Auto bitrate set to 192k")
                     bitrate = "192k|"
@@ -806,7 +842,8 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                     logger.info(f"Attached cover image to {output_file}")
             else:
                 logger.warning(
-                    f"Cover image not found for {", ".join(loc.name for loc in args.media_locations)}"
+                    f"Cover image not found for {
+                        ", ".join(loc.name for loc in args.media_locations)}"
                 )
         if success and delete_originals:
             logger.info("Deleting input files")
@@ -825,7 +862,8 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         return output_file.name, True
     except Exception as e:
         logger.exception(
-            f"Exception when converting {", ".join(media_location.name for media_location in args.media_locations)}: {repr(e)}"
+            f"Exception when converting {", ".join(
+                media_location.name for media_location in args.media_locations)}: {repr(e)}"
         )
         return (
             ", ".join(media_location.name for media_location in args.media_locations),
@@ -858,7 +896,8 @@ def validate_inputs(inputs: list[argparse.Namespace]) -> list[DispatchArgs]:
                         .resolve()
                     )
                 single_process_logger.warning(
-                    f"{", ".join(namespace.input)} will be outputted to {str(output_file)}"
+                    f"{", ".join(namespace.input)} will be outputted to {
+                        str(output_file)}"
                 )
             if output_file.exists():
                 x = input(f"File {output_file} exists: Overwrite? (y/N): ")
@@ -1023,7 +1062,8 @@ def main():
         for i, (print_str, success) in enumerate(iter):
             if success:
                 single_process_logger.warning(
-                    f"Completed conversion and merger into {print_str}: ({i+1}/{total_amount})"
+                    f"Completed conversion and merger into {
+                        print_str}: ({i+1}/{total_amount})"
                 )
             else:
                 single_process_logger.error(
