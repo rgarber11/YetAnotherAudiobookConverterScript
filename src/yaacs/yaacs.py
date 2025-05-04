@@ -186,9 +186,7 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
         for k, v in metadata["streams"][0]["tags"]:
             metadata["format"]["tags"][k] = v
     ans = FileInfo(
-        filename=pathlib.Path(metadata["format"]["filename"][5:])
-        .expanduser()
-        .resolve(),
+        filename=music_file,
         performer=get_performer(metadata),
         cuesheet="",
         chapters=[],
