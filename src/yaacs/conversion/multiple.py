@@ -59,19 +59,19 @@ def generate_metadata_for_folder(
             metadata.publisher = file.publisher
     logger.info(f"Found metadata {metadata}")
     with metadata_file.open("w+") as metadataIO:
-        metadataIO.write(";FFMETADATA1\n")
+        _ = metadataIO.write(";FFMETADATA1\n")
         if metadata.title:
-            metadataIO.write(f"title={metadata.title}\n")
+            _ = metadataIO.write(f"title={metadata.title}\n")
         if metadata.artist:
-            metadataIO.write(f"artist={metadata.artist}\n")
+            _ = metadataIO.write(f"artist={metadata.artist}\n")
         if metadata.performer:
-            metadataIO.write(f"performer={metadata.performer}\n")
+            _ = metadataIO.write(f"performer={metadata.performer}\n")
         if metadata.genre:
-            metadataIO.write(f"genre={metadata.genre}\n")
+            _ = metadataIO.write(f"genre={metadata.genre}\n")
         if metadata.date:
-            metadataIO.write(f"date={metadata.date}\n")
+            _ = metadataIO.write(f"date={metadata.date}\n")
         if metadata.publisher:
-            metadataIO.write(f"publisher={metadata.publisher}\n")
+            _ = metadataIO.write(f"publisher={metadata.publisher}\n")
     return metadata_file
 
 
