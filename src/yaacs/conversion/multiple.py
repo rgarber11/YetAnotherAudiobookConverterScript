@@ -2,7 +2,7 @@ import logging
 import pathlib
 import subprocess
 
-from ..models import Chapter, DiscoveredMetadata, FileInfo
+from yaacs.models import Chapter, DiscoveredMetadata, FileInfo
 
 
 def generate_chapters_for_folder(

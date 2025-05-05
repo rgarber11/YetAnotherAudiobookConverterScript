@@ -2,7 +2,7 @@ import logging
 import pathlib
 import subprocess
 
-from ..models import FileInfo
+from yaacs.models import FileInfo
 
 
 def final_conversion(
