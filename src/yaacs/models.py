@@ -1,6 +1,7 @@
 import argparse
 import dataclasses
 import pathlib
+from collections.abc import Sequence
 from enum import Enum, auto
 
 
@@ -58,12 +59,12 @@ class CoverStatus(Enum):
 
 
 class CommandParserArgs(argparse.Namespace):
-    input: list[str]
-    auto: list[str]
-    delete: bool
-    output: str
-    metadata: str
-    metadatachapter: str
-    bitrate: str
-    cuesheet: str
-    cover: str
+    input: Sequence[str]  # pyright: ignore[reportUninitializedInstanceVariable]
+    auto: Sequence[str]  # pyright: ignore[reportUninitializedInstanceVariable]
+    delete: bool  # pyright: ignore[reportUninitializedInstanceVariable]
+    output: str  # pyright: ignore[reportUninitializedInstanceVariable]
+    metadata: str  # pyright: ignore[reportUninitializedInstanceVariable]
+    metadatachapter: str  # pyright: ignore[reportUninitializedInstanceVariable]
+    bitrate: str  # pyright: ignore[reportUninitializedInstanceVariable]
+    cuesheet: str  # pyright: ignore[reportUninitializedInstanceVariable]
+    cover: str  # pyright: ignore[reportUninitializedInstanceVariable]
