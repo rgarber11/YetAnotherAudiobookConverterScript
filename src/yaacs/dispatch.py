@@ -27,13 +27,13 @@ def get_initial_int(x: str) -> int | None:  # atoi() in Python
 
 def get_performer(raw_metadata: Any) -> str:  # Most formats don't have a performer tag
     if "performer" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"]["performer"]
+        return raw_metadata["format"]["tags"].get("performer")
     if "narratedby" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"]["narratedby"]
+        return raw_metadata["format"]["tags"].get("narratedby")
     if "composer" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"]["composer"]
+        return raw_metadata["format"]["tags"].get("composer")
     if "album_artist" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"]["album_artist"]
+        return raw_metadata["format"]["tags"].get("album_artist")
     return ""
 
 
@@ -67,15 +67,15 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
         cuesheet="",
         chapters=[],
         bit_rate=int(metadata["format"]["bit_rate"]),
-        title=empty_not_none(metadata["format"]["tags"]["title"]),
-        album=empty_not_none(metadata["format"]["tags"]["album"]),
-        genre=empty_not_none(metadata["format"]["tags"]["genre"]),
-        date=empty_not_none(metadata["format"]["tags"]["date"]),
-        publisher=metadata["format"]["tags"]["publisher"],
-        track=get_initial_int(metadata["format"]["tags"]["track"]),
-        disc=get_initial_int(metadata["format"]["tags"]["disc"]),
+        title=empty_not_none(metadata["format"]["tags"].get("title")),
+        album=empty_not_none(metadata["format"]["tags"].get("album")),
+        genre=empty_not_none(metadata["format"]["tags"].get("genre")),
+        date=empty_not_none(metadata["format"]["tags"].get("date")),
+        publisher=empty_not_none(metadata["format"]["tags"].get("publisher")),
+        track=get_initial_int(metadata["format"]["tags"].get("track")),
+        disc=get_initial_int(metadata["format"]["tags"].get("disc")),
         duration=float(metadata["format"]["duration"]),
-        artist=empty_not_none(metadata["format"]["tags"]["artist"]),
+        artist=empty_not_none(metadata["format"]["tags"].get("artist")),
         cover_codec="",
     )
     if any(stream["codec_type"] == "video" for stream in metadata["streams"]):
@@ -84,10 +84,10 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
             for stream in metadata["streams"]
             if stream["codec_type"] == "video"
         )
-    if metadata["format"]["tags"]["CUESHEET"]:
-        ans.cuesheet = metadata["format"]["tags"]["CUESHEET"]
-    elif metadata["format"]["tags"]["cuesheet"]:
-        ans.cuesheet = metadata["format"]["tags"]["cuesheet"]
+    if metadata["format"]["tags"].get("CUESHEET"):
+        ans.cuesheet = metadata["format"]["tags"].get("CUESHEET")
+    elif metadata["format"]["tags"].get("cuesheet"):
+        ans.cuesheet = metadata["format"]["tags"].get("cuesheet")
     if metadata["chapters"]:
         for chapter in metadata["chapters"]:
             ans.chapters.append(
