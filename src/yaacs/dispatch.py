@@ -3,13 +3,13 @@ import logging
 import pathlib
 import subprocess
 import tempfile
-from typing import Any
+from typing import cast
 
 from yaacs.consts import audio_files
 from yaacs.conversion.multiple import merge_together
 from yaacs.conversion.single import convert_single_file
 from yaacs.cover import attempt_attach_cover
-from yaacs.models import Chapter, CoverStatus, DispatchArgs, FileInfo
+from yaacs.models import Chapter, CoverStatus, DispatchArgs, FFProbeResult, FileInfo
 
 
 def empty_not_none(s: str | None) -> str:
@@ -18,22 +18,26 @@ def empty_not_none(s: str | None) -> str:
     return s
 
 
-def get_initial_int(x: str) -> int | None:  # atoi() in Python
+def get_initial_int(x: str | None) -> int | None:  # atoi() in Python
+    if x is None:
+        return None
     try:
         return int(x.replace(x.lstrip("0123456789"), ""))
-    except ValueError:
+    except (ValueError, AttributeError):
         return None
 
 
-def get_performer(raw_metadata: Any) -> str:  # Most formats don't have a performer tag
-    if "performer" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"].get("performer")
-    if "narratedby" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"].get("narratedby")
-    if "composer" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"].get("composer")
-    if "album_artist" in raw_metadata["format"]["tags"]:
-        return raw_metadata["format"]["tags"].get("album_artist")
+def get_performer(
+    raw_metadata: FFProbeResult,
+) -> str:  # Most formats don't have a performer tag
+    if raw_metadata["format"]["tags"].get("performer"):
+        return cast(str, raw_metadata["format"]["tags"].get("performer"))
+    if raw_metadata["format"]["tags"].get("narratedby"):
+        return cast(str, raw_metadata["format"]["tags"].get("narratedby"))
+    if raw_metadata["format"]["tags"].get("composer"):
+        return cast(str, raw_metadata["format"]["tags"].get("composer"))
+    if raw_metadata["format"]["tags"].get("album_artist"):
+        return cast(str, raw_metadata["format"]["tags"].get("album_artist"))
     return ""
 
 
@@ -61,6 +65,7 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
     if music_file.suffix == ".opus":  # FFMpeg maps opus tags wrong (11/13/24)
         for k, v in metadata["streams"][0]["tags"]:
             metadata["format"]["tags"][k] = v
+    metadata = cast(FFProbeResult, metadata)
     ans = FileInfo(
         filename=music_file,
         performer=get_performer(metadata),
@@ -85,16 +90,16 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
             if stream["codec_type"] == "video"
         )
     if metadata["format"]["tags"].get("CUESHEET"):
-        ans.cuesheet = metadata["format"]["tags"].get("CUESHEET")
+        ans.cuesheet = cast(str, metadata["format"]["tags"]["CUESHEET"])
     elif metadata["format"]["tags"].get("cuesheet"):
-        ans.cuesheet = metadata["format"]["tags"].get("cuesheet")
+        ans.cuesheet = cast(str, metadata["format"]["tags"].get("cuesheet"))
     if metadata["chapters"]:
         for chapter in metadata["chapters"]:
             ans.chapters.append(
                 Chapter(
                     (
-                        chapter["tags"]["title"]
-                        if "title" in chapter["tags"]
+                        cast(str, chapter["tags"]["title"])
+                        if chapter["tags"].get("title")
                         else f"Chapter {int(chapter["id"]) + 1}"
                     ),
                     (
@@ -151,10 +156,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     bitrate = args.bitrate
     delete_originals = args.delete_originals
     logger = logging.getLogger("yaacs subprocess")
-    logger.warning(
-        f"Converting {",".join(str(loc)
-                   for loc in args.media_locations)}"
-    )
+    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
     try:
         file_metadata = prepare_file_metadata(media_locations, logger)
         with tempfile.TemporaryDirectory() as temp_dir:

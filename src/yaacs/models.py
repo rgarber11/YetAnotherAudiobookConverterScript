@@ -3,6 +3,7 @@ import dataclasses
 import pathlib
 from collections.abc import Sequence
 from enum import Enum, auto
+from typing import TypedDict
 
 
 @dataclasses.dataclass
@@ -56,6 +57,51 @@ class CoverStatus(Enum):
     NONE_FOUND = auto()
     ATTACHMENT_FAILED = auto()
     SUCCESS = auto()
+
+
+class FormatTagDict(TypedDict):
+    performer: str | None
+    narratedby: str | None
+    composer: str | None
+    album_artist: str | None
+    title: str | None
+    album: str | None
+    genre: str | None
+    date: str | None
+    publisher: str | None
+    track: str | None
+    disc: str | None
+    artist: str | None
+    cuesheet: str | None
+    CUESHEET: str | None
+
+
+class FormatDict(TypedDict):
+    tags: FormatTagDict
+    duration: str
+    bit_rate: str
+
+
+class StreamDict(TypedDict):
+    codec_type: str
+    codec_name: str
+
+
+class ChapterTagDict(TypedDict):
+    title: str | None
+
+
+class ChapterDict(TypedDict):
+    start_time: str
+    end_time: str
+    id: str
+    tags: ChapterTagDict
+
+
+class FFProbeResult(TypedDict):
+    format: FormatDict
+    streams: list[StreamDict]
+    chapters: list[ChapterDict] | None
 
 
 class CommandParserArgs(argparse.Namespace):
