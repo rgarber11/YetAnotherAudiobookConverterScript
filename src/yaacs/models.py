@@ -114,3 +114,9 @@ class CommandParserArgs(argparse.Namespace):
     bitrate: str  # pyright: ignore[reportUninitializedInstanceVariable]
     cuesheet: str  # pyright: ignore[reportUninitializedInstanceVariable]
     cover: str  # pyright: ignore[reportUninitializedInstanceVariable]
+
+
+class GlobalParserArgs(argparse.Namespace):
+    quiet: bool  # pyright: ignore[reportUninitializedInstanceVariable]
+    verbose: bool  # pyright: ignore[reportUninitializedInstanceVariable]
+    threads: int  # pyright: ignore[reportUninitializedInstanceVariable]

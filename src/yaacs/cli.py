@@ -12,7 +12,7 @@ from typing import cast, override
 
 from yaacs.consts import VERSION, audio_files
 from yaacs.dispatch import dispatch_conversion
-from yaacs.models import CommandParserArgs, DispatchArgs
+from yaacs.models import CommandParserArgs, DispatchArgs, GlobalParserArgs
 
 single_process_logger = logging.getLogger("yaacs")
 
@@ -58,7 +58,7 @@ class GlobalArgsArgparse(argparse.ArgumentParser):
 
 
 class CommandArgsArgparse(argparse.ArgumentParser):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.modded_help: str | None = None
         self.modded_usage: str | None = None
         super().__init__(*args, **kwargs)
@@ -201,7 +201,7 @@ def validate_inputs(inputs: list[CommandParserArgs]) -> list[DispatchArgs]:
     return ans
 
 
-def main():
+def main() -> None:
     if not which("ffmpeg"):
         single_process_logger.error("FFMPEG not found on path. Exiting now.")
         sys.exit(1)
@@ -289,6 +289,7 @@ def main():
     )
     command_parser.set_modded_help_usage(parser.format_help(), parser.format_usage())
     global_args, command_args = parser.parse_known_args()
+    global_args = cast(GlobalParserArgs, global_args)
     logging.getLogger().setLevel(logging.WARNING)
     if global_args.quiet:
         logging.getLogger().setLevel(logging.ERROR)
