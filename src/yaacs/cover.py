@@ -2,8 +2,9 @@ import base64
 import logging
 import pathlib
 import subprocess
+from typing import cast
 
-from mutagen import MutagenError
+from mutagen._util import MutagenError
 from mutagen.flac import Picture
 from mutagen.id3 import PictureType
 from mutagen.oggopus import OggOpus
@@ -22,7 +23,7 @@ def attach_image(
             image_data = img.read()
         picture = Picture()
         picture.data = image_data
-        picture.type = PictureType.COVER_FRONT
+        picture.type = cast(int, PictureType.COVER_FRONT)
         picture.height = 0  # We're allowed to set all these to zero
         picture.width = 0
         picture.colors = 0
@@ -34,7 +35,7 @@ def attach_image(
         vcomment_value = encoded_data.decode("ascii")
         file = OggOpus(str(output_file))
         file["metadata_block_picture"] = [vcomment_value]
-        file.save()
+        file.save(filething=None, padding=None)
         return True
     except (IOError, MutagenError):
         return False
