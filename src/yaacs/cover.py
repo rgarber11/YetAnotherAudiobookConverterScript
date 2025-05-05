@@ -1,6 +1,12 @@
+import base64
 import logging
 import pathlib
 import subprocess
+
+from mutagen import MutagenError
+from mutagen.flac import Picture
+from mutagen.id3 import PictureType
+from mutagen.oggopus import OggOpus
 
 from .consts import image_files
 from .models import CoverStatus, FileInfo
@@ -10,17 +16,28 @@ from .models import CoverStatus, FileInfo
 def attach_image(
     output_file: pathlib.Path, cover_image: pathlib.Path, logger: logging.Logger
 ) -> bool:
-    logger.info(f"Attaching image for {output_file.name}")
-    attachment_args = [
-        "opustags",
-        str(output_file),
-        "-i",
-        "--set-cover",
-        str(cover_image),
-    ]
-    attachment = subprocess.run(attachment_args)
-    logger.info(attachment_args)
-    return attachment.returncode == 0
+    try:
+        logger.info(f"Attaching image for {output_file.name}")
+        with cover_image.open("rb") as img:
+            image_data = img.read()
+        picture = Picture()
+        picture.data = image_data
+        picture.type = PictureType.COVER_FRONT
+        picture.height = 0  # We're allowed to set all these to zero
+        picture.width = 0
+        picture.colors = 0
+        picture.depth = 0
+        picture.desc = "Cover (front)"
+        picture.mime = image_files[cover_image.suffix[1:]]
+        picture_data = picture.write()
+        encoded_data = base64.b64encode(picture_data)
+        vcomment_value = encoded_data.decode("ascii")
+        file = OggOpus(str(output_file))
+        file["metadata_block_picture"] = [vcomment_value]
+        file.save()
+        return True
+    except (IOError, MutagenError):
+        return False
 
 
 def extract_embedded_image(
