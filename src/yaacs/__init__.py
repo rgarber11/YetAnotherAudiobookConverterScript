@@ -1,7 +1,5 @@
 import logging.config
 
-from yaacs.cli import main
-
 logging.config.dictConfig(
     {
         "version": 1,
@@ -17,5 +15,3 @@ logging.config.dictConfig(
         "loggers": {"root": {"level": "WARNING", "handlers": ["stdout"]}},
     }
 )
-if __name__ == "__main__":
-    main()
