@@ -7,6 +7,7 @@ import multiprocessing
 import pathlib
 import re
 import sys
+from shutil import which
 from typing import cast, override
 
 from yaacs.consts import VERSION, audio_files
@@ -201,6 +202,9 @@ def validate_inputs(inputs: list[CommandParserArgs]) -> list[DispatchArgs]:
 
 
 def main():
+    if not which("ffmpeg"):
+        single_process_logger.error("FFMPEG not found on path. Exiting now.")
+        sys.exit(1)
     command_parser = CommandArgsArgparse()
     ig = command_parser.add_mutually_exclusive_group(required=True)
     _ = ig.add_argument(
