@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import logging.config
 import multiprocessing
 import pathlib
 import re
@@ -14,21 +13,6 @@ from yaacs.consts import VERSION, audio_files
 from yaacs.dispatch import dispatch_conversion
 from yaacs.models import CommandParserArgs, DispatchArgs
 
-logging.config.dictConfig(
-    {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {"simple": {"format": "%(message)s"}},
-        "handlers": {
-            "stdout": {
-                "class": "logging.StreamHandler",
-                "formatter": "simple",
-                "stream": "ext://sys.stdout",
-            }
-        },
-        "loggers": {"root": {"level": "WARNING", "handlers": ["stdout"]}},
-    }
-)
 single_process_logger = logging.getLogger("yaacs")
 
 
@@ -115,7 +99,7 @@ def get_folders_of_files(media_location: pathlib.Path) -> list[pathlib.Path]:
 def resolve_automatic_conversion(
     media_location: pathlib.Path, bitrate: str | None, delete_originals: bool
 ) -> list[DispatchArgs]:
-    ans = []
+    ans: list[DispatchArgs] = []
     single_process_logger.info(f"Detecting books within {media_location.name}")
     for folder in get_folders_of_files(media_location):
         output_file = folder.joinpath(f"{folder.stem}.opus").expanduser().resolve()
@@ -152,16 +136,10 @@ def validate_inputs(inputs: list[CommandParserArgs]) -> list[DispatchArgs]:
             else:
                 first_input = pathlib.Path(namespace.input[0]).expanduser().resolve()
                 if first_input.is_dir():
-                    output_file = (
-                        first_input.joinpath(f"{first_input.stem}.opus")
-                        .expanduser()
-                        .resolve()
-                    )
+                    output_file = first_input.joinpath(f"{first_input.stem}.opus")
                 else:
-                    output_file = (
-                        first_input.parent.joinpath(f"{first_input.stem}.opus")
-                        .expanduser()
-                        .resolve()
+                    output_file = first_input.parent.joinpath(
+                        f"{first_input.stem}.opus"
                     )
                 single_process_logger.warning(
                     f"{", ".join(namespace.input)} will be outputted to {
@@ -225,52 +203,52 @@ def validate_inputs(inputs: list[CommandParserArgs]) -> list[DispatchArgs]:
 def main():
     command_parser = CommandArgsArgparse()
     ig = command_parser.add_mutually_exclusive_group(required=True)
-    ig.add_argument(
+    _ = ig.add_argument(
         "-i",
         "--input",
         nargs="+",
         help="Locations of files for conversion. If this is a directory, all audio files recursively contained will be merged into one file.",
     )
-    ig.add_argument(
+    _ = ig.add_argument(
         "-a",
         "--auto",
         nargs="+",
         help="Locations to auto-convert. Will recursively search for subfolders which contain no other directories and contain audio file(s). These files will be converted/merged.",
         metavar="LOCATION",
     )
-    command_parser.add_argument(
+    _ = command_parser.add_argument(
         "-x",
         "--delete",
         action="store_true",
         help="Delete input files after conversion. DO NOT USE THIS IF YOU DON'T HAVE COMPLETE CONFIDENCE IN THIS TOOL.",
     )
-    command_parser.add_argument(
+    _ = command_parser.add_argument(
         "-o",
         "--output",
         help="Set output file name. Defaults to the name of the first input file with a .opus extension",
     )
     mg = command_parser.add_mutually_exclusive_group()
-    mg.add_argument(
+    _ = mg.add_argument(
         "-m",
         "--metadata",
         help="FFMETADATA file containing desired final metadata. Use -M if the metadata also contains chapter information",
     )
-    mg.add_argument(
+    _ = mg.add_argument(
         "-M",
         "--metadatachapter",
         help="FFMETADATA file containing desired final metadata along with chapter data. Use -m to preserve automatic chapter detection.",
     )
-    command_parser.add_argument(
+    _ = command_parser.add_argument(
         "-b",
         "--bitrate",
         help="Set bitrate for output file. Defaults to 32kbps for inputs under 192kbps, and 192kbps for inputs above that threshold.",
     )
-    command_parser.add_argument(
+    _ = command_parser.add_argument(
         "-c",
         "--cuesheet",
         help="Set location for cuesheet file to read for chapter data. Only works if the input is a singular file.",
     )
-    command_parser.add_argument(
+    _ = command_parser.add_argument(
         "-I",
         "--cover",
         help="Explicitly set final cover file. Will attempt to autodiscover cover if not set.",
@@ -281,23 +259,23 @@ def main():
         prog="yaacs",
         description="A Script to convert audiobooks to .opus",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-v",
         "--version",
         action="version",
         version=f"%(prog)s {VERSION}",
     )
     logging_opts = parser.add_mutually_exclusive_group()
-    logging_opts.add_argument(
+    _ = logging_opts.add_argument(
         "-q", "--quiet", help="Only log errors during conversion", action="store_true"
     )
-    logging_opts.add_argument(
+    _ = logging_opts.add_argument(
         "-V",
         "--verbose",
         help="Log more information about the conversion process",
         action="store_true",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-t",
         "--threads",
         help="Number of subprocesses to spawn to convert books. Not specifying or 0 will default to core count.",
