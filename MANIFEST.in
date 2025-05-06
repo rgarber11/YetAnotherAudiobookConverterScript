@@ -1,2 +1,2 @@
 global-exclude cue.py .gitignore
-recursive-exclude .github *
+recursive-exclude .github __pycache__ *
