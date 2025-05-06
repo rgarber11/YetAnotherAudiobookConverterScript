@@ -16,11 +16,11 @@ class build_parser(Command):
         from lark.tools.standalone import gen_standalone
 
         with (
-            open("src/yaacs/cue/cue.lark", "r") as grammarFile,
-            open(f"{self.build_lib}/yaacs/cue/cue.py", "w") as outfile,
+            open("src/yaacs/cue/cue.lark", "r") as grammar_file,
+            open(f"{self.build_lib}/yaacs/cue/cue.py", "w") as out_file,
         ):
-            lalrParser = Lark(grammarFile, parser="lalr")
-            gen_standalone(lalrParser, out=outfile)
+            lalrParser = Lark(grammar_file, parser="lalr")
+            gen_standalone(lalrParser, out=out_file)
 
     @override
     def initialize_options(self) -> None:
