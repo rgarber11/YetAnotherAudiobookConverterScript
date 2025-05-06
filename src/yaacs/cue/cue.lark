@@ -3,29 +3,29 @@ cuesheet : ( catalog_line | cdtextfile_line | rem_line | performer_line | title_
 file : file_line ( rem_line | performer_line | title_line | track )+
 track : track_line ( title_line | performer_line | flag_line | isrc_line | rem_line | index_line | postgap_line | pregap_line )*
 
-pregap_line: "PREGAP"i TIME "\n"+ 
-postgap_line: "POSTGAP"i TIME "\n"+ 
-index_line: "INDEX"i INDEX_NUMBER TIME "\n"+ 
-rem_line: "REM"i OTHER_CONTENT SINGLE_LINE_CONTENT "\n"+ 
-file_line: "FILE"i OTHER_CONTENT FILE_TYPES "\n"+ 
-isrc_line: "ISRC"i SINGLE_LINE_CONTENT "\n"+ 
-flag_line: "FLAGS"i FLAGS "\n"+ 
-cdtextfile_line: "CDTEXTFILE"i SINGLE_LINE_CONTENT "\n"+ 
-catalog_line: "CATALOG"i CATALOG_NUMBER "\n"+ 
-performer_line: "PERFORMER"i SINGLE_LINE_CONTENT "\n"+ 
-title_line: "TITLE"i SINGLE_LINE_CONTENT "\n"+ 
-track_line: "TRACK"i TRACK_NUMBER TRACK_TYPES "\n"+ 
+pregap_line: "PREGAP"i TIME "\n"+
+postgap_line: "POSTGAP"i TIME "\n"+
+index_line: "INDEX"i INDEX_NUMBER TIME "\n"+
+rem_line: "REM"i OTHER_CONTENT SINGLE_LINE_CONTENT "\n"+
+file_line: "FILE"i OTHER_CONTENT FILE_TYPE "\n"+
+isrc_line: "ISRC"i SINGLE_LINE_CONTENT "\n"+
+flag_line: "FLAGS"i FLAGS "\n"+
+cdtextfile_line: "CDTEXTFILE"i SINGLE_LINE_CONTENT "\n"+
+catalog_line: "CATALOG"i CATALOG_NUMBER "\n"+
+performer_line: "PERFORMER"i SINGLE_LINE_CONTENT "\n"+
+title_line: "TITLE"i SINGLE_LINE_CONTENT "\n"+
+track_line: "TRACK"i TRACK_NUMBER TRACK_TYPE "\n"+
 
 OTHER_CONTENT : QUOTED_STRING | SINGLE_WORD
-SINGLE_LINE_CONTENT : QUOTED_STRING | (/\S[^\n]*?(?=\n)/)
+SINGLE_LINE_CONTENT : QUOTED_STRING | /\S[^\n]*?(?=\n)/
 SINGLE_WORD : /\S+/
 TIME : /[0-9]+:[0-9][0-9]?:[0-9][0-9]?/
 TRACK_NUMBER : "1".."9" | "0" "1".."9" | "1".."9" ALL_DIGITS
 INDEX_NUMBER : ALL_DIGITS ALL_DIGITS?
 %import common.ESCAPED_STRING -> QUOTED_STRING
 CATALOG_NUMBER : /[0-9]{13}/
-FILE_TYPES : "WAVE"i | "MP3"i | "AIFF"i | "BINARY"i | "MOTOROLA"i
-TRACK_TYPES : "AUDIO"i | "CDG"i | "MODE1/2048" | "MODE1/2352" | "MODE2/2336" | "MODE2/2352" | "CDI/2336" | "CDI/2352" 
+FILE_TYPE : "WAVE"i | "MP3"i | "AIFF"i | "BINARY"i | "MOTOROLA"i
+TRACK_TYPE : "AUDIO"i | "CDG"i | "MODE1/2048" | "MODE1/2352" | "MODE2/2336" | "MODE2/2352" | "CDI/2336" | "CDI/2352"
 ALL_DIGITS : "0".."9"
 FLAGS : "DCP"i | "4CH"i | "PRE"i | "SCMS"i
 %ignore " " | "\t"
