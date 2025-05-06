@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77.0"]
+requires = ["setuptools>=77.0", "lark==1.2.*"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "yaacs"
@@ -8,7 +8,7 @@ authors = [
         { name="Richard Garber", email="rg.1029384756@gmail.com" },
 ]
 readme = "README.md"
-license = "MIT"
+license = "GPL-2.0-only"
 requires-python = ">=3.9"
 dependencies = ["mutagen==1.47.*"]
 classifiers = [
@@ -35,4 +35,3 @@ yaacs = "yaacs.cli:main"
 yaacs = ["py.typed"]
 [tool.setuptools.packages.find]
 where = ["src"]
-
