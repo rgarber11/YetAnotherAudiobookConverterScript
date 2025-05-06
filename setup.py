@@ -15,7 +15,6 @@ class build_parser(Command):
         from lark import Lark
         from lark.tools.standalone import gen_standalone
 
-        print(self.build_lib)
         with (
             open("src/yaacs/cue/cue.lark", "r") as grammarFile,
             open(f"{self.build_lib}/yaacs/cue/cue.py", "w") as outfile,
