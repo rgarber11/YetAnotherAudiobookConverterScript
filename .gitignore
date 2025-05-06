@@ -5,3 +5,4 @@ build/
 dist/
 src/yaacs.egg-info/
 venv/
+src/yaacs/cue/cue.py
