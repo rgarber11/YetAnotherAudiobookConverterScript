@@ -27,7 +27,7 @@ def make_flag(value: str) -> TrackFlag:
     return TrackFlag.NONE
 
 
-def make_track_type(value: str):
+def make_track_type(value: str) -> TrackType:
     value = value.upper()
     if value == "AUDIO":
         return TrackType.AUDIO
@@ -48,7 +48,7 @@ def make_track_type(value: str):
     raise ValueError("Invalid Track Type")
 
 
-def make_file_type(value: str):
+def make_file_type(value: str) -> FileType:
     value = value.upper()
     if value == "WAVE":
         return FileType.WAVE
@@ -67,7 +67,7 @@ def unquote(quote: Token) -> str:
     return str(quote[1:-1]) if quote.type == "QUOTED_STRING" else str(quote)
 
 
-class CueTransformer(Interpreter):
+class CueInterpreter(Interpreter):
     @v_args(inline=True)
     def track_line(self, number: str, typer: str) -> tuple[int, TrackType]:
         return (int(number, 10), make_track_type(typer))
@@ -275,9 +275,9 @@ class CueTransformer(Interpreter):
 
 
 def parse_str(content: str) -> Cuesheet:
-    return CueTransformer().visit(lark_parser.parse(f"{content}\n"))
+    return CueInterpreter().visit(lark_parser.parse(f"{content}\n"))
 
 
 def parse_file(file_name: PathLike) -> Cuesheet:
     with open(file_name, "r") as f:
-        return CueTransformer().visit(lark_parser.parse(f"{f.read()}\n"))
+        return CueInterpreter().visit(lark_parser.parse(f"{f.read()}\n"))
