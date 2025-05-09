@@ -19,7 +19,9 @@ class build_parser(Command):
             open("src/yaacs/cue/cue.lark", "r") as grammar_file,
             open(f"{self.build_lib}/yaacs/cue/cue.py", "w") as out_file,
         ):
-            lalrParser = Lark(grammar_file, parser="lalr")
+            lalrParser = Lark(
+                grammar_file, parser="lalr", start=["start", "file", "track"]
+            )
             gen_standalone(lalrParser, out=out_file)
 
     @override
