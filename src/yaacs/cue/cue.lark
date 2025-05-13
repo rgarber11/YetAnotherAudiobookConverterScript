@@ -1,0 +1,30 @@
+start : "\n"* cuesheet
+cuesheet : ( catalog_line | cdtextfile_line | rem_line | performer_line | title_line )* file+
+file : file_line ( rem_line | performer_line | title_line | track )+
+track : track_line ( title_line | performer_line | flag_line | isrc_line | rem_line | index_line | postgap_line | pregap_line )*
+
+pregap_line: "PREGAP"i TIME "\n"+
+postgap_line: "POSTGAP"i TIME "\n"+
+index_line: "INDEX"i INDEX_NUMBER TIME "\n"+
+rem_line: "REM"i ( QUOTED_STRING | SINGLE_WORD ) ( QUOTED_STRING | /\S[^\n]*?(?=\n)/ ) "\n"+
+file_line: "FILE"i ( QUOTED_STRING | SINGLE_WORD ) FILE_TYPE "\n"+
+isrc_line: "ISRC"i (QUOTED_STRING | /\S[^\n]*?(?=\n)/) "\n"+
+flag_line: "FLAGS"i FLAGS "\n"+
+cdtextfile_line: "CDTEXTFILE"i (QUOTED_STRING | /\S[^\n]*?(?=\n)/) "\n"+
+catalog_line: "CATALOG"i CATALOG_NUMBER "\n"+
+performer_line: "PERFORMER"i (QUOTED_STRING | /\S[^\n]*?(?=\n)/) "\n"+
+title_line: "TITLE"i (QUOTED_STRING | /\S[^\n]*?(?=\n)/) "\n"+
+track_line: "TRACK"i TRACK_NUMBER TRACK_TYPE "\n"+
+
+SINGLE_WORD : /\S+/
+TIME : /[0-9]+:[0-9][0-9]?:[0-9][0-9]?/
+TRACK_NUMBER : "1".."9" | "0" "1".."9" | "1".."9" ALL_DIGITS
+INDEX_NUMBER : ALL_DIGITS ALL_DIGITS?
+%import common.ESCAPED_STRING -> QUOTED_STRING
+CATALOG_NUMBER : /[0-9]{13}/
+FILE_TYPE : "WAVE"i | "MP3"i | "AIFF"i | "BINARY"i | "MOTOROLA"i
+TRACK_TYPE : "AUDIO"i | "CDG"i | "MODE1/2048"i | "MODE1/2352"i | "MODE2/2336"i | "MODE2/2352"i | "CDI/2336"i | "CDI/2352"i
+ALL_DIGITS : "0".."9"
+FLAGS : "DCP"i | "4CH"i | "PRE"i | "SCMS"i
+%ignore " " | "\t"
+
