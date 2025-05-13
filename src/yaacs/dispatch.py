@@ -93,6 +93,8 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
         ans.cuesheet = cast(str, metadata["format"]["tags"]["CUESHEET"])
     elif metadata["format"]["tags"].get("cuesheet"):
         ans.cuesheet = cast(str, metadata["format"]["tags"].get("cuesheet"))
+    if ans.cuesheet and "FILE" not in ans.cuesheet:
+        ans.cuesheet = f'FILE "{music_file.name}" MP3\n{ans.cuesheet}\n'
     if metadata["chapters"]:
         for chapter in metadata["chapters"]:
             ans.chapters.append(
