@@ -92,7 +92,7 @@ def create_cue_chapter_file(
             _ = chapters.write(
                 f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={last_track.indices[1] * 1000}\nEND={total_duration * 1000}\ntitle={last_track.get_title()}\n"
             )
-    except VisitError:
+    except (VisitError, ValueError):
         logger.error("Cannot parse cuesheet.")
         return None
     return chapter_file
