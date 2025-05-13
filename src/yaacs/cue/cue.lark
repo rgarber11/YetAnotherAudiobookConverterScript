@@ -15,8 +15,6 @@ catalog_line: "CATALOG"i CATALOG_NUMBER "\n"+
 performer_line: "PERFORMER"i (QUOTED_STRING | /\S[^\n]*?(?=\n)/) "\n"+
 title_line: "TITLE"i (QUOTED_STRING | /\S[^\n]*?(?=\n)/) "\n"+
 track_line: "TRACK"i TRACK_NUMBER TRACK_TYPE "\n"+
-# OTHER_CONTENT : QUOTED_STRING | SINGLE_WORD
-# SINGLE_LINE_CONTENT : QUOTED_STRING | /\S[^\n]*?(?=\n)/
 
 SINGLE_WORD : /\S+/
 TIME : /[0-9]+:[0-9][0-9]?:[0-9][0-9]?/

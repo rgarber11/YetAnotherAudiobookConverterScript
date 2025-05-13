@@ -274,11 +274,11 @@ class CueInterpreter(Interpreter):
         return self.cuesheet(value)
 
 
-def parse_str(content: str) -> Cuesheet:
-    return CueInterpreter().visit(lark_parser.parse(f"{content}\n"))
+def parse_cue_str(content: str) -> Cuesheet:
+    return CueInterpreter().visit(lark_parser.parse(f"{content}\n", start="start"))
 
 
-def parse_file_tags(content: str) -> File:
+def parse_file_portion(content: str) -> File:
     return CueInterpreter().visit(
         lark_parser.parse(f"{content.lstrip()}\n", start="file")
     )
@@ -292,4 +292,4 @@ def parse_track(content: str) -> File:
 
 def parse_cuefile(file_name: PathLike) -> Cuesheet:
     with open(file_name, "r") as f:
-        return CueInterpreter().visit(lark_parser.parse(f"{f.read()}\n"))
+        return CueInterpreter().visit(lark_parser.parse(f"{f.read()}\n", start="start"))

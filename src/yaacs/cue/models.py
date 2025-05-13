@@ -1,6 +1,8 @@
 import dataclasses
 from enum import Enum, Flag, auto
 
+__all__ = ["TrackType", "FileType", "TrackFlag", "Track", "Flag", "Cuesheet"]
+
 
 class TrackType(Enum):
     AUDIO = auto()
