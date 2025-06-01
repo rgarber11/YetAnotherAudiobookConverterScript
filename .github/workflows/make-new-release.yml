@@ -26,7 +26,7 @@ jobs:
       - name: Get latest YAACS version
         run: |
           cd ${{ github.workspace }}
-          version=$(tomlq -r '.project.version' "pyproject.toml")
+          version=$(yq -r '.project.version' "pyproject.toml")
           echo "BUILD_VERSION=$version" >> $GITHUB_ENV
       - name: Check if latest version was already built
         if: ${{ steps.getLatest.outputs.tag_name == env.BUILD_VERSION }}
