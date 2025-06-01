@@ -3,9 +3,6 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
-permissions:
-  contents: write
-  packages: write
 jobs:
   conditionally-build:
     runs-on: ubuntu-latest
@@ -14,6 +11,7 @@ jobs:
       url: https://pypi.org/p/yaacs
     permissions:
       id-token: write
+      contents: write
     steps:
       - name: Get latest release info
         uses: cardinalby/git-get-release-action@v1
