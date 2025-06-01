@@ -35,7 +35,7 @@ def attach_image(
         vcomment_value = encoded_data.decode("ascii")
         file = OggOpus(str(output_file))
         file["metadata_block_picture"] = [vcomment_value]
-        file.save(filething=None, padding=None)
+        file.save()
         return True
     except (IOError, MutagenError):
         return False
