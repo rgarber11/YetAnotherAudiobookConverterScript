@@ -49,6 +49,5 @@ jobs:
           tag_name: ${{ env.BUILD_VERSION }}
           files: ${{ github.workspace }}/dist/*
           generate_release_notes: true
-          make_latest: true
       - name: Deploy release to PyPa
         uses: pypa/gh-action-pypi-publish@release/v1
