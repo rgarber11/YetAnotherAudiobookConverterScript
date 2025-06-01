@@ -5,6 +5,7 @@ on:
     branches: [master]
 permissions:
   contents: write
+  packages: write
 jobs:
   conditionally-build:
     runs-on: ubuntu-latest
