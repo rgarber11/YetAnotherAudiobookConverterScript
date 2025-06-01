@@ -34,12 +34,11 @@ def final_conversion(
         else:
             args.extend(["-map_chapters", "1"])
     else:
-        args.extend(["-map_metadata", "0"])
         if chapter_file:
-            args.extend(
-                ["-f", "ffmetadata", "-i", f"file:{chapter_file}", "-map_chapters", "1"]
-            )
+            args.extend(["-f", "ffmetadata", "-i", f"file:{chapter_file}"])
+            args.extend(["-map_metadata", "0", "-map_chapters", "1"])
         else:
+            args.extend(["-map_metadata", "0"])
             args.extend(["-map_chapters", "0"])
         if performer:
             args.extend(["-metadata", f"performer={performer}"])
@@ -89,9 +88,10 @@ def create_cue_chapter_file(
                     cuesheet.files[0].tracks[i + 1].indices[1] * 1000}\ntitle={track.get_title()}\n"
                 )
             last_track = cuesheet.files[0].tracks[-1]
-            _ = chapters.write(
-                f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={last_track.indices[1] * 1000}\nEND={total_duration * 1000}\ntitle={last_track.get_title()}\n"
-            )
+            if total_duration > last_track.indices[1]:
+                _ = chapters.write(
+                    f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={last_track.indices[1] * 1000}\nEND={total_duration * 1000}\ntitle={last_track.get_title()}\n"
+                )
     except (VisitError, ValueError):
         logger.error("Cannot parse cuesheet.")
         return None
