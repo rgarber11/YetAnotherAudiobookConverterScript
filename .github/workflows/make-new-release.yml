@@ -1,0 +1,53 @@
+name: Better Release Code
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  conditionally-build:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/yaacs
+    permissions:
+      id-token: write
+    steps:
+      - name: Get latest release info
+        uses: cardinalby/git-get-release-action@v1
+        id: getLatest
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          latest: true
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+      - name: Get latest YAACS version
+        run: |
+          cd ${{ github.workspace }}
+          version=$(tomlq -r '.project.version' "pyproject.toml")
+          echo "BUILD_VERSION=$version" >> $GITHUB_ENV
+      - name: Check if latest version was already built
+        if: ${{ steps.getLatest.outputs.tag_name == env.BUILD_VERSION }}
+        run: |
+          echo latest version already built, released, and deployed
+          exit -1
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.x"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build "lark==1.2.*"
+      - name: Build package
+        run: python -m build
+      - name: Create and publish release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.BUILD_VERSION }}
+          files: ${{ github.workspace }}/dist/*
+          generate_release_notes: true
+          make_latest: true
+      - name: Deploy release to PyPa
+        uses: pypa/gh-action-pypi-publish@release/v1
