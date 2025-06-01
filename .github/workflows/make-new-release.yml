@@ -45,10 +45,10 @@ jobs:
       - name: Build package
         run: python -m build
       - name: Create and publish release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.BUILD_VERSION }}
           files: ${{ github.workspace }}/dist/*
           generate_release_notes: true
-      - name: Deploy release to PyPa
+      - name: Deploy release to PyPA
         uses: pypa/gh-action-pypi-publish@release/v1
