@@ -13,15 +13,56 @@ Convert your audiobooks to .opus for smaller files at equivalent quality.
 - (opt-in) Automatic deletion of input files
 - Multiprocessing to increase conversion throughput
 
+## Dependencies
+
+YAACS depends on the following system packages for conversion:
+
+- [FFmpeg](https://ffmpeg.org/) for metadata detection and conversion
+
+YAACS also depends on the following Python packages for conversion:
+
+- [Mutagen](https://mutagen.readthedocs.io/en/latest/) for cover image installation
+
+Building YAACS depends on the following Python packages:
+
+- [Lark](https://github.com/lark-parser/lark) for generating CUE parser code.
+- [Setuptools](https://github.com/pypa/setuptools) for creating the final Python wheel.
+- [Build](https://github.com/pypa/build) as a standardized Python build frontend.
+
+## Building
+
+Prepackaged versions of YAACS are available in this repo. However, building YAACS is also possible.
+
+1. First, setup a build environment. If you are confused, an example of how to do this is given below:
+
+```bash
+python -m venv venv
+source venv/bin/activate # (bash/zsh) command to activate Virtual Environment
+venv\Scripts\activate.bat # Windows cmd.exe command to activate Virtual Environment
+```
+
+2. Next, install YAACS' dev dependencies:
+
+```bash
+pip install -r requirements-dev.txt # Installs the lark parser, along with build software for Python
+
+```
+
+3. Now, you can run the standardized Python build command.
+
+```bash
+python -m build
+```
+
+4. And lastly you can install YAACS.
+
+```bash
+pip install dist/yaacs-2.0.0-py3-none-any.whl # Note that your version of YAACS may generate a differently named file.
+```
+
 ## Installation
 
-YAACS depends on the following packages for conversion:
-
-- [mkvtoolnix](https://mkvtoolnix.download/) for CUE file chapter parsing
-- [FFmpeg](https://ffmpeg.org/) for metadata detection and conversion
-- [opustags](https://github.com/fmang/opustags) for cover image insertion.
-
-However, YAACS does not depend on any python packages. As such, it can be installed via your preferred Python package manager, or simply run directly without installation.
+YAACS is available for installation via [PyPI](https://pypi.org/project/yaacs/) and on the [AUR](https://aur.archlinux.org/packages/yaacs). Feel free to package YAACS for other systems!
 
 ## Usage
 
