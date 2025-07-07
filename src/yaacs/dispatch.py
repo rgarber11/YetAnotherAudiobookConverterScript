@@ -96,20 +96,20 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
     if ans.cuesheet and "FILE" not in ans.cuesheet:
         ans.cuesheet = f'FILE "{music_file.name}" MP3\n{ans.cuesheet}\n'
     if metadata["chapters"]:
-        for chapter in metadata["chapters"]:
+        for i, chapter in enumerate(metadata["chapters"]):
+            next_start = (
+                metadata["chapters"][i + 1]["start_time"]
+                if i + 1 < len(metadata["chapters"])
+                else metadata["format"]["duration"]
+            )
             ans.chapters.append(
                 Chapter(
                     (
                         cast(str, chapter["tags"]["title"])
                         if chapter["tags"].get("title")
-                        else f"Chapter {int(chapter["id"]) + 1}"
+                        else f"Chapter {int(chapter['id']) + 1}"
                     ),
-                    (
-                        (
-                            float(chapter["end_time"])
-                            - float(chapter["start_time"]) * 1000
-                        )
-                    ),
+                    (float(next_start) - float(chapter["start_time"])),
                 )
             )
     return ans
@@ -158,7 +158,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     bitrate = args.bitrate
     delete_originals = args.delete_originals
     logger = logging.getLogger("yaacs subprocess")
-    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
+    logger.warning(f"Converting {','.join(str(loc) for loc in args.media_locations)}")
     try:
         file_metadata = prepare_file_metadata(media_locations, logger)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -231,7 +231,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                 else:
                     logger.warning(
                         f"Cover image not found for {
-                            ", ".join(loc.name for loc in args.media_locations)}"
+                            ', '.join(loc.name for loc in args.media_locations)}"
                     )
         if success and delete_originals:
             logger.info("Deleting input files")
@@ -250,7 +250,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         return output_file.name, True
     except Exception as e:
         logger.exception(
-            f"Exception when converting {", ".join(
+            f"Exception when converting {', '.join(
                 media_location.name for media_location in args.media_locations)}: {repr(e)}"
         )
         return (

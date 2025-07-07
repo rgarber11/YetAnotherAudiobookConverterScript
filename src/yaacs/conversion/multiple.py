@@ -15,7 +15,7 @@ def generate_chapters_for_folder(
             for chapter in file.chapters:
                 prepend = file.title if file.title else file.filename.stem
                 chapters.append(
-                    Chapter(f"{prepend} - {chapter.title}", chapter.duration)
+                    Chapter(f"{prepend} - {chapter.title}", chapter.duration * 1000)
                 )
         elif file.title:
             chapters.append(Chapter(file.title, file.duration * 1000))
@@ -113,11 +113,12 @@ def merge_together(
         logger.info("All files have the same suffix. Assuming input concatenation.")
         concat_filename = temp_dir.joinpath(f"{file_metadata[0].filename.stem}.files")
         with concat_filename.open("w+") as concat_list:
-            concat_list.writelines(
-                f"file '{str(file.filename
-                             ).replace("'", "'\\''")}'\n"
+            escaped_filenames = (
+                file.filename.absolute().as_posix().replace("'", "'\\''")
                 for file in file_metadata
             )
+            lines_to_write = (f"file '{filename}'\n" for filename in escaped_filenames)
+            concat_list.writelines(lines_to_write)
         args.extend(
             [
                 "-f",
