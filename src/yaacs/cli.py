@@ -25,7 +25,7 @@ class GlobalArgsArgparse(argparse.ArgumentParser):
         self.command_parser_help: str = "\n".join(command_parser_help.splitlines()[4:])
         self.command_parser_usage: str = (
             f"[{command_parser_usage[command_parser_usage.find(
-                "("):].rstrip()}]+"
+                '('):].rstrip()}]+"
         )
         self.modded_help: str | None = None
         self.modded_usage: str | None = None
@@ -143,7 +143,7 @@ def validate_inputs(inputs: list[CommandParserArgs]) -> list[DispatchArgs]:
                         f"{first_input.stem}.opus"
                     )
                 single_process_logger.warning(
-                    f"{", ".join(namespace.input)} will be outputted to {
+                    f"{', '.join(namespace.input)} will be outputted to {
                         str(output_file)}"
                 )
             if output_file.exists():

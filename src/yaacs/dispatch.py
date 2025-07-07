@@ -102,7 +102,7 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
                     (
                         cast(str, chapter["tags"]["title"])
                         if chapter["tags"].get("title")
-                        else f"Chapter {int(chapter["id"]) + 1}"
+                        else f"Chapter {int(chapter['id']) + 1}"
                     ),
                     (
                         (
@@ -158,7 +158,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
     bitrate = args.bitrate
     delete_originals = args.delete_originals
     logger = logging.getLogger("yaacs subprocess")
-    logger.warning(f"Converting {",".join(str(loc) for loc in args.media_locations)}")
+    logger.warning(f"Converting {','.join(str(loc) for loc in args.media_locations)}")
     try:
         file_metadata = prepare_file_metadata(media_locations, logger)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -231,7 +231,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
                 else:
                     logger.warning(
                         f"Cover image not found for {
-                            ", ".join(loc.name for loc in args.media_locations)}"
+                            ', '.join(loc.name for loc in args.media_locations)}"
                     )
         if success and delete_originals:
             logger.info("Deleting input files")
@@ -250,7 +250,7 @@ def dispatch_conversion(args: DispatchArgs) -> tuple[str, bool]:
         return output_file.name, True
     except Exception as e:
         logger.exception(
-            f"Exception when converting {", ".join(
+            f"Exception when converting {', '.join(
                 media_location.name for media_location in args.media_locations)}: {repr(e)}"
         )
         return (
