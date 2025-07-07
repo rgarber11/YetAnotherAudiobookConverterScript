@@ -96,7 +96,12 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
     if ans.cuesheet and "FILE" not in ans.cuesheet:
         ans.cuesheet = f'FILE "{music_file.name}" MP3\n{ans.cuesheet}\n'
     if metadata["chapters"]:
-        for chapter in metadata["chapters"]:
+        for i, chapter in enumerate(metadata["chapters"]):
+            next_start = (
+                metadata["chapters"][i + 1]["start_time"]
+                if i + 1 < len(metadata["chapters"])
+                else metadata["format"]["duration"]
+            )
             ans.chapters.append(
                 Chapter(
                     (
@@ -104,12 +109,7 @@ def get_metadata(music_file: pathlib.Path, logger: logging.Logger) -> FileInfo:
                         if chapter["tags"].get("title")
                         else f"Chapter {int(chapter['id']) + 1}"
                     ),
-                    (
-                        (
-                            float(chapter["end_time"])
-                            - float(chapter["start_time"]) * 1000
-                        )
-                    ),
+                    (float(next_start) - float(chapter["start_time"])),
                 )
             )
     return ans
